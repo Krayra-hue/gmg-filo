@@ -123,6 +123,7 @@ function initDatabase() {
     )`);
   });
 }
+
 // GÜVENLİK BEKÇİSİ (JWT Middleware)
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -192,7 +193,6 @@ app.post('/api/users', authenticateToken, (req, res) => {
   );
 });
 
-// Kullanıcı yetkilerini ve rollerini güncelleme endpoint'i
 app.put('/api/users/:id', authenticateToken, (req, res) => {
   const id = req.params.id;
   const { permissions, actions } = req.body;
@@ -209,11 +209,9 @@ app.put('/api/users/:id', authenticateToken, (req, res) => {
   );
 });
 
-// Kullanıcı silme endpoint'i
 app.delete('/api/users/:id', authenticateToken, (req, res) => {
   const id = req.params.id;
 
-  // Ana admin kullanıcısının (id: 1 veya username: 'admin') silinmesini engelle
   db.get(`SELECT username FROM users WHERE id = ?`, [id], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     if (user && user.username === 'admin') {
@@ -228,11 +226,9 @@ app.delete('/api/users/:id', authenticateToken, (req, res) => {
 });
 
 // 3. ARAÇLAR (VEHICLES) ENDPOINT'LERİ
-// 1. Tüm araçları getir
 app.get('/api/vehicles', authenticateToken, (req, res) => {
   db.all(`SELECT * FROM vehicles`, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    // İçindeki JSON string alanları objeye çeviriyoruz
     const vehicles = rows.map(v => ({
       ...v,
       financials: v.financials ? JSON.parse(v.financials) : {},
@@ -245,7 +241,6 @@ app.get('/api/vehicles', authenticateToken, (req, res) => {
   });
 });
 
-// 2. Yeni araç ekle
 app.post('/api/vehicles', authenticateToken, (req, res) => {
   const { plate, brand, model, year, status, currentKm, nextMaintenanceKm, inspectionDate, insuranceDate, insurancePolicyNo, cascoDate, cascoPolicyNo, kabisStatus, kabisIdentityNo, financials, tires, driver, contract, documents } = req.body;
   
@@ -264,8 +259,7 @@ app.post('/api/vehicles', authenticateToken, (req, res) => {
   );
 });
 
-// 3. Araç güncelle
-// Araç güncelle (Araç evrakları veya sürücü evrakları silindiğinde uploads klasöründen de fiziksel olarak silinir)
+// Tek ve optimize edilmiş Araç Güncelleme Rota Endpoint'i (Dosya temizleme destekli)
 app.put('/api/vehicles/:id', authenticateToken, (req, res) => {
   const id = req.params.id;
   const v = req.body;
@@ -273,23 +267,19 @@ app.put('/api/vehicles/:id', authenticateToken, (req, res) => {
   db.get(`SELECT * FROM vehicles WHERE id = ?`, [id], (err, oldVehicle) => {
     if (!err && oldVehicle) {
       try {
-        // 1. Eski araç evrakları ile yeni araç evraklarını karşılaştır
         const oldDocs = JSON.parse(oldVehicle.documents || '[]');
         const newDocs = v.documents || [];
         const deletedDocs = oldDocs.filter(oldDoc => !newDocs.some(newDoc => newDoc.id === oldDoc.id));
 
-        // 2. Eski sürücü evrakları ile yeni sürücü evraklarını karşılaştır
         const oldDriver = oldVehicle.driver ? JSON.parse(oldVehicle.driver) : {};
         const oldDriverDocs = oldDriver.documents || [];
         const newDriver = v.driver || {};
         const newDriverDocs = newDriver.documents || [];
         const deletedDriverDocs = oldDriverDocs.filter(oldDoc => !newDriverDocs.some(newDoc => newDoc.id === oldDoc.id));
 
-        // Silinen tüm dosyaları birleştir
-        const allDeletedFiles = [...deletedDocs, ...deletedDriverDocs];
+        const allDeleted = [...deletedDocs, ...deletedDriverDocs];
 
-        // Dosyaları uploads klasöründen fiziksel olarak sil (fs.unlinkSync)
-        allDeletedFiles.forEach(doc => {
+        allDeleted.forEach(doc => {
           if (doc.fileUrl && doc.fileUrl.includes('/uploads/')) {
             const filename = doc.fileUrl.split('/uploads/')[1];
             const filePath = path.join(__dirname, 'uploads', filename);
@@ -328,7 +318,6 @@ app.put('/api/vehicles/:id', authenticateToken, (req, res) => {
   });
 });
 
-// 4. Araç sil
 app.delete('/api/vehicles/:id', authenticateToken, (req, res) => {
   const id = req.params.id;
   db.run(`DELETE FROM vehicles WHERE id = ?`, [id], function(err) {
@@ -337,66 +326,7 @@ app.delete('/api/vehicles/:id', authenticateToken, (req, res) => {
   });
 });
 
-
-
-// Araç güncelle (evraklar ve sürücü evrakları silindiğinde uploads klasöründen de fiziksel olarak silinir)
-app.put('/api/vehicles/:id', authenticateToken, (req, res) => {
-  const id = req.params.id;
-  const v = req.body;
-
-  db.get(`SELECT * FROM vehicles WHERE id = ?`, [id], (err, oldVehicle) => {
-    if (!err && oldVehicle) {
-      try {
-        const oldDocs = JSON.parse(oldVehicle.documents || '[]');
-        const newDocs = v.documents || [];
-        const deletedDocs = oldDocs.filter(oldDoc => !newDocs.some(newDoc => newDoc.id === oldDoc.id));
-
-        // Araç üzerindeki sürücünün evrakları da kontrol ediliyor
-        const oldDriver = oldVehicle.driver ? JSON.parse(oldVehicle.driver) : {};
-        const oldDriverDocs = oldDriver.documents || [];
-        const newDriver = v.driver || {};
-        const newDriverDocs = newDriver.documents || [];
-        const deletedDriverDocs = oldDriverDocs.filter(oldDoc => !newDriverDocs.some(newDoc => newDoc.id === oldDoc.id));
-
-        const allDeleted = [...deletedDocs, ...deletedDriverDocs];
-
-        allDeleted.forEach(doc => {
-          if (doc.fileUrl && doc.fileUrl.includes('/uploads/')) {
-            const filename = doc.fileUrl.split('/uploads/')[1];
-            const filePath = path.join(__dirname, 'uploads', filename);
-            if (fs.existsSync(filePath)) {
-              try {
-                fs.unlinkSync(filePath);
-              } catch (e) {
-                console.error('Dosya silinirken hata oluştu:', e);
-              }
-            }
-          }
-        });
-      } catch (e) {
-        console.error('Eski belgeler taranırken hata:', e);
-      }
-    }
-
-    const financialsStr = JSON.stringify(v.financials || {});
-    const tiresStr = JSON.stringify(v.tires || []);
-    const driverStr = JSON.stringify(v.driver || null);
-    const contractStr = JSON.stringify(v.contract || null);
-    const docsStr = JSON.stringify(v.documents || []);
-
-    db.run(
-      `UPDATE vehicles SET plate = ?, brand = ?, model = ?, year = ?, status = ?, currentKm = ?, nextMaintenanceKm = ?, inspectionDate = ?, insuranceDate = ?, insurancePolicyNo = ?, cascoDate = ?, cascoPolicyNo = ?, kabisStatus = ?, kabisIdentityNo = ?, financials = ?, tires = ?, driver = ?, contract = ?, documents = ? WHERE id = ?`,
-      [v.plate, v.brand, v.model, v.year, v.status, v.currentKm, v.nextMaintenanceKm, v.inspectionDate, v.insuranceDate, v.insurancePolicyNo, v.cascoDate, v.cascoPolicyNo, v.kabisStatus, v.kabisIdentityNo, financialsStr, tiresStr, driverStr, contractStr, docsStr, id],
-      function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Araç başarıyla güncellendi', vehicle: { id: Number(id), ...v } });
-      }
-    );
-  });
-});
-
 // 4. BAKIM GEÇMİŞİ ENDPOINT'LERİ
-// Bakım kaydını sil
 app.delete('/api/maintenance/:id', authenticateToken, (req, res) => {
   const id = req.params.id;
   db.run(`DELETE FROM maintenance WHERE id = ?`, [id], function(err) {
@@ -435,8 +365,6 @@ app.get('/api/drivers', authenticateToken, (req, res) => {
   });
 });
 
-// Sürücü bilgilerini güncelle
-// Sürücü bilgilerini güncelle (evrak silindiğinde uploads klasöründen de fiziksel olarak silinir)
 app.put('/api/drivers/:id', authenticateToken, (req, res) => {
   const id = req.params.id;
   const d = req.body;
@@ -542,16 +470,18 @@ app.delete('/api/company-docs/:id', authenticateToken, (req, res) => {
   });
 });
 
-// 7. DOSYA YÜKLEME ENDPOINT'İ (Türkçe Karakter Desteği ile)
+// 7. DOSYA YÜKLEME ENDPOINT'İ (Dinamik Host Desteği ile - Render Uyumlu)
 app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Dosya yüklenemedi!' });
   }
 
-  // Multer'ın latin1 olarak aldığı orijinal dosya adını UTF-8 Türkçe karaktere çeviriyoruz
   const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+  
+  // Render veya Localhost ortamına göre dinamik URL oluşturma
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
 
-  const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
   res.json({
     message: 'Dosya başarıyla yüklendi',
     fileUrl: fileUrl,
