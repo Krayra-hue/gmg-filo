@@ -13,9 +13,10 @@ const initialUsers = [
   { id: 3, username: 'finans', password: '123', role: 'user', name: 'Mehmet Finans', permissions: ['financials', 'reports'], actions: { create: false, edit: false, delete: false } }
 ];
 // Tarayıcı yerelde mi yoksa tünelde mi çalışıyor otomatik anlar:
+// Tarayıcı lokalde mi yoksa Render'da mı çalışıyor otomatik anlar:
 const API_BASE_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:5000'
-  : 'https://brink-action-fable.ngrok-free.dev'; // <-- Buraya localtunnel'dan aldığın backend adresini yaz!
+  ? 'http://localhost:10000'
+  : 'https://gmg-filo.onrender.com'; // <-- Render Backend URL'iniz
 
 const initialVehicles = [
   {
