@@ -601,7 +601,7 @@ export default function App() {
     const newRec = { vehicleId: Number(newMaintenanceForm.vehicleId), plate: targetVeh.plate, date: newMaintenanceForm.date, km: Number(newMaintenanceForm.km), type: newMaintenanceForm.type, cost: Number(newMaintenanceForm.cost) || 0, service: newMaintenanceForm.service || 'Yetkili Servis', note: newMaintenanceForm.note || '-' };
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch(`${API_BASE_URL}/api/maintenance`, {
+    const response = await fetch(`${API_BASE_URL}/api/maintenance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(newRec)
