@@ -15,7 +15,7 @@ const initialUsers = [
 // Tarayıcı yerelde mi yoksa tünelde mi çalışıyor otomatik anlar:
 // Tarayıcı lokalde mi yoksa Render'da mı çalışıyor otomatik anlar:
 const API_BASE_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:10000'
+  ? 'http://localhost:5000'
   : 'https://gmg-filo.onrender.com'; // <-- Render Backend URL'iniz
 
 const initialVehicles = [
