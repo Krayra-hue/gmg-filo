@@ -15,7 +15,7 @@ const initialUsers = [
 // Tarayıcı yerelde mi yoksa tünelde mi çalışıyor otomatik anlar:
 // Tarayıcı lokalde mi yoksa Render'da mı çalışıyor otomatik anlar:
 const API_BASE_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:5000'
+  ? '${API_BASE_URL}'
   : 'https://gmg-filo.onrender.com'; // <-- Render Backend URL'iniz
 
 const initialVehicles = [
@@ -260,19 +260,19 @@ const handleSaveNewUser = async (e) => {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     // Araçları Çek
-    fetch('http://localhost:5000/api/vehicles', { headers })
+    fetch('${API_BASE_URL}/api/vehicles', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setVehicles(data); })
       .catch(err => console.error('Araçlar yüklenemedi:', err));
 
     // Bakım Kayıtlarını Çek
-    fetch('http://localhost:5000/api/maintenance', { headers })
+    fetch('${API_BASE_URL}/api/maintenance', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setMaintenanceRecords(data); })
       .catch(err => console.error('Bakım kayıtları yüklenemedi:', err));
 
     // Kullanıcı Listesini Çek
-    fetch('http://localhost:5000/api/users', { headers })
+    fetch('${API_BASE_URL}/api/users', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setUsersList(data); })
       .catch(err => console.error('Kullanıcılar yüklenemedi:', err));
@@ -284,31 +284,31 @@ useEffect(() => {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     // Araçları Çek
-    fetch('http://localhost:5000/api/vehicles', { headers })
+    fetch('${API_BASE_URL}/api/vehicles', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setVehicles(data); })
       .catch(err => console.error('Araçlar yüklenemedi:', err));
 
     // Bakım Kayıtlarını Çek
-    fetch('http://localhost:5000/api/maintenance', { headers })
+    fetch('${API_BASE_URL}/api/maintenance', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setMaintenanceRecords(data); })
       .catch(err => console.error('Bakım kayıtları yüklenemedi:', err));
 
     // Kullanıcı Listesini Çek
-    fetch('http://localhost:5000/api/users', { headers })
+    fetch('${API_BASE_URL}/api/users', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setUsersList(data); })
       .catch(err => console.error('Kullanıcılar yüklenemedi:', err));
 
     // Sürücüleri Çek
-    fetch('http://localhost:5000/api/drivers', { headers })
+    fetch('${API_BASE_URL}/api/drivers', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setStandaloneDrivers(data); })
       .catch(err => console.error('Sürücüler yüklenemedi:', err));
 
     // Şirket Evraklarını Çek
-    fetch('http://localhost:5000/api/company-docs', { headers })
+    fetch('${API_BASE_URL}/api/company-docs', { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setCompanyDocs(data); })
       .catch(err => console.error('Şirket evrakları yüklenemedi:', err));
@@ -337,7 +337,7 @@ const handleLogin = async (e) => {
     
     try {
       // Backend sunucumuza istek gönderiyoruz
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch('${API_BASE_URL}/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -391,7 +391,7 @@ const handleDeleteUser = async (userId) => {
       const token = localStorage.getItem('gmg_token');
 
       try {
-        const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -437,7 +437,7 @@ const handleToggleUserPermission = async (userId, permId) => {
     const targetUser = updatedList.find(u => u.id === userId);
     if (targetUser) {
       try {
-        await fetch(`http://localhost:5000/api/users/${userId}`, {
+        await fetch(`${API_BASE_URL}/api/users/${userId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -476,7 +476,7 @@ const handleToggleUserPermission = async (userId, permId) => {
     const targetUser = updatedList.find(u => u.id === userId);
     if (targetUser) {
       try {
-        await fetch(`http://localhost:5000/api/users/${userId}`, {
+        await fetch(`${API_BASE_URL}/api/users/${userId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -802,7 +802,7 @@ const handleDeleteDriver = async (item) => {
             ...v,
             driver: { name: 'Zimmetsiz', phone: '-', licenseClass: '-', srcType: '-', srcExpiryDate: '-', psychotechnicalDate: '-', documents: [] }
           };
-          await fetch(`http://localhost:5000/api/vehicles/${v.id}`, {
+          await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(updatedVeh)
@@ -815,7 +815,7 @@ const handleDeleteDriver = async (item) => {
       const foundStandalone = standaloneDrivers.find(d => d.name && d.name.trim().toLowerCase() === nameLower);
       if (foundStandalone) {
         try {
-          await fetch(`http://localhost:5000/api/drivers/${foundStandalone.id}`, {
+          await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -855,7 +855,7 @@ const handleSaveNewMaintenance = async (e) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch('http://localhost:5000/api/maintenance', {
+      const response = await fetch('${API_BASE_URL}/api/maintenance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -895,7 +895,7 @@ const handleDeleteMaintenanceRecord = async (recId) => {
     if (window.confirm('Bu bakım kaydını silmek istediğinize emin misiniz?')) {
       const token = localStorage.getItem('gmg_token');
       try {
-        const response = await fetch(`http://localhost:5000/api/maintenance/${recId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/maintenance/${recId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -942,7 +942,7 @@ const handleSaveNewDriver = async (e) => {
       };
 
       try {
-        const response = await fetch(`http://localhost:5000/api/vehicles/${targetVehicle.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/vehicles/${targetVehicle.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -974,7 +974,7 @@ const handleSaveNewDriver = async (e) => {
       };
 
       try {
-        const response = await fetch('http://localhost:5000/api/drivers', {
+        const response = await fetch('${API_BASE_URL}/api/drivers', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1012,7 +1012,7 @@ const handleDeleteVehicle = async (vehicleId) => {
     if (window.confirm('Bu aracı veritabanından ve sistemden silmek istediğinize emin misiniz?')) {
       const token = localStorage.getItem('gmg_token');
       try {
-        const response = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1089,7 +1089,7 @@ const handleSaveFullNewVehicle = async (e) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch('http://localhost:5000/api/vehicles', {
+      const response = await fetch('${API_BASE_URL}/api/vehicles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1139,7 +1139,7 @@ const handleSaveVehicleEdit = async (e) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicles/${editForm.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${editForm.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1191,7 +1191,7 @@ const handleRentVehicle = async (e) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicles/${selectedVehicle.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${selectedVehicle.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1235,7 +1235,7 @@ const handleReturnToGarage = async (vehicleId) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1273,7 +1273,7 @@ const handleSetMaintenanceStatus = async (vehicleId) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1323,7 +1323,7 @@ const handleConfirmKabisChange = async () => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1395,7 +1395,7 @@ const handleSaveDriverPageEdit = async (item) => {
         const updatedVehData = { ...v, driver: updatedDriverObj };
         
         try {
-          const res = await fetch(`http://localhost:5000/api/vehicles/${v.id}`, {
+          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -1430,7 +1430,7 @@ const handleSaveDriverPageEdit = async (item) => {
       };
 
       try {
-        const res = await fetch(`http://localhost:5000/api/drivers/${foundStandalone.id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1457,7 +1457,7 @@ const handleSaveDriverPageEdit = async (item) => {
       };
 
       try {
-        const response = await fetch('http://localhost:5000/api/drivers', {
+        const response = await fetch('${API_BASE_URL}/api/drivers', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1494,7 +1494,7 @@ const handleDriverDocUploadPage = async (e, item) => {
 
     try {
       // 1. Önce dosyayı /api/upload ile sunucuya (uploads klasörüne) yüklüyoruz
-      const uploadRes = await fetch('http://localhost:5000/api/upload', {
+      const uploadRes = await fetch('${API_BASE_URL}/api/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -1527,7 +1527,7 @@ const handleDriverDocUploadPage = async (e, item) => {
           const updatedDriverObj = { ...v.driver, documents: [...currentDocs, newDoc] };
           const updatedVehData = { ...v, driver: updatedDriverObj };
 
-          const res = await fetch(`http://localhost:5000/api/vehicles/${v.id}`, {
+          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -1550,7 +1550,7 @@ const handleDriverDocUploadPage = async (e, item) => {
         const currentDocs = foundStandalone.documents || [];
         const updatedStandaloneData = { ...foundStandalone, documents: [...currentDocs, newDoc] };
 
-        const res = await fetch(`http://localhost:5000/api/drivers/${foundStandalone.id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1590,7 +1590,7 @@ const handleDriverDocUploadPage = async (e, item) => {
           const updatedDriverObj = { ...v.driver, documents: filteredDocs };
           const updatedVehData = { ...v, driver: updatedDriverObj };
 
-          const res = await fetch(`http://localhost:5000/api/vehicles/${v.id}`, {
+          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -1613,7 +1613,7 @@ const handleDriverDocUploadPage = async (e, item) => {
         const filteredDocs = (foundStandalone.documents || []).filter(doc => doc.id !== docId);
         const updatedStandaloneData = { ...foundStandalone, documents: filteredDocs };
 
-        const res = await fetch(`http://localhost:5000/api/drivers/${foundStandalone.id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1668,7 +1668,7 @@ const handleSaveTire = async (e) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicles/${selectedTireVehicleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${selectedTireVehicleId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1704,7 +1704,7 @@ const handleDeleteTire = async (vehicleId, tireId) => {
 
       const token = localStorage.getItem('gmg_token');
       try {
-        const response = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1736,7 +1736,7 @@ const handleFileUpload = async (e, vehicleId) => {
     const token = localStorage.getItem('gmg_token');
 
     try {
-      const response = await fetch('http://localhost:5000/api/upload', {
+      const response = await fetch('${API_BASE_URL}/api/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -1769,7 +1769,7 @@ const handleFileUpload = async (e, vehicleId) => {
 
         // 2. Veritabanında kalıcı olması için backend'e PUT isteği atıyoruz
         if (updatedVehicleData) {
-          await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+          await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -1811,7 +1811,7 @@ const handleDeleteVehicleDoc = async (vehicleId, docId) => {
       try {
         // Backend'e güncel aracı gönderiyoruz (silinen evrak veritabanından da uçuyor)
         if (updatedVehicleData) {
-          const res = await fetch(`http://localhost:5000/api/vehicles/${vehicleId}`, {
+          const res = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -1861,7 +1861,7 @@ const handleSaveCompanyDoc = async (e) => {
         const formData = new FormData();
         formData.append('file', companyDocForm.file);
 
-        const uploadRes = await fetch('http://localhost:5000/api/upload', {
+        const uploadRes = await fetch('${API_BASE_URL}/api/upload', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -1869,7 +1869,7 @@ const handleSaveCompanyDoc = async (e) => {
 
         const uploadData = await uploadRes.json();
         if (uploadRes.ok) {
-          uploadedFileUrl = uploadData.fileUrl;   // Örn: http://localhost:5000/uploads/17000...pdf
+          uploadedFileUrl = uploadData.fileUrl;   // Örn: ${API_BASE_URL}/uploads/17000...pdf
           uploadedFileName = uploadData.fileName; // Orijinal dosya adı
         } else {
           alert(uploadData.error || 'Dosya sunucuya yüklenemedi!');
@@ -1888,7 +1888,7 @@ const handleSaveCompanyDoc = async (e) => {
       };
 
       // Backend veritabanına kaydetmek için POST isteği (Kalıcılık için şart)
-      const res = await fetch('http://localhost:5000/api/company-docs', {
+      const res = await fetch('${API_BASE_URL}/api/company-docs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1927,7 +1927,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
     try {
       // Backend'e silme isteği gönderiyoruz
-      const res = await fetch(`http://localhost:5000/api/company-docs/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/company-docs/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
