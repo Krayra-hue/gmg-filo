@@ -126,11 +126,11 @@ const handleSaveNewUser = async (e) => {
     const response = await fetch(`${API_BASE_URL}/api/users`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(newUserObj)
-      });
+    });
 
       const data = await response.json();
 
@@ -260,19 +260,19 @@ const handleSaveNewUser = async (e) => {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     // Araçları Çek
-    fetch('${API_BASE_URL}/api/vehicles', { headers })
+    fetch(`${API_BASE_URL}/api/vehicles`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setVehicles(data); })
       .catch(err => console.error('Araçlar yüklenemedi:', err));
 
-    // Bakım Kayıtlarını Çek
-    fetch('${API_BASE_URL}/api/maintenance', { headers })
+// Bakım Kayıtlarını Çek
+    fetch(`${API_BASE_URL}/api/maintenance`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setMaintenanceRecords(data); })
       .catch(err => console.error('Bakım kayıtları yüklenemedi:', err));
 
     // Kullanıcı Listesini Çek
-    fetch('${API_BASE_URL}/api/users', { headers })
+    fetch(`${API_BASE_URL}/api/users`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setUsersList(data); })
       .catch(err => console.error('Kullanıcılar yüklenemedi:', err));
@@ -283,32 +283,32 @@ useEffect(() => {
     const token = localStorage.getItem('gmg_token');
     const headers = { 'Authorization': `Bearer ${token}` };
 
-    // Araçları Çek
-    fetch('${API_BASE_URL}/api/vehicles', { headers })
+   // Araçları Çek
+    fetch(`${API_BASE_URL}/api/vehicles`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setVehicles(data); })
       .catch(err => console.error('Araçlar yüklenemedi:', err));
 
     // Bakım Kayıtlarını Çek
-    fetch('${API_BASE_URL}/api/maintenance', { headers })
+    fetch(`${API_BASE_URL}/api/maintenance`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setMaintenanceRecords(data); })
       .catch(err => console.error('Bakım kayıtları yüklenemedi:', err));
 
     // Kullanıcı Listesini Çek
-    fetch('${API_BASE_URL}/api/users', { headers })
+    fetch(`${API_BASE_URL}/api/users`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setUsersList(data); })
       .catch(err => console.error('Kullanıcılar yüklenemedi:', err));
 
     // Sürücüleri Çek
-    fetch('${API_BASE_URL}/api/drivers', { headers })
+    fetch(`${API_BASE_URL}/api/drivers`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setStandaloneDrivers(data); })
       .catch(err => console.error('Sürücüler yüklenemedi:', err));
 
     // Şirket Evraklarını Çek
-    fetch('${API_BASE_URL}/api/company-docs', { headers })
+    fetch(`${API_BASE_URL}/api/company-docs`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setCompanyDocs(data); })
       .catch(err => console.error('Şirket evrakları yüklenemedi:', err));
@@ -337,7 +337,7 @@ const handleLogin = async (e) => {
     
     try {
       // Backend sunucumuza istek gönderiyoruz
-      const response = await fetch('${API_BASE_URL}/api/login', {
+      const response = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -346,7 +346,7 @@ const handleLogin = async (e) => {
           username: loginForm.username,
           password: loginForm.password
         })
-      });
+    });
 
       const data = await response.json();
 
