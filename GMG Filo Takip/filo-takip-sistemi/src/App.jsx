@@ -15,7 +15,7 @@ const initialUsers = [
 // Tarayıcı yerelde mi yoksa tünelde mi çalışıyor otomatik anlar:
 // Tarayıcı lokalde mi yoksa Render'da mı çalışıyor otomatik anlar:
 const API_BASE_URL = window.location.hostname === 'localhost'
-  ? '${API_BASE_URL}'
+  ? `${API_BASE_URL}`
   : 'https://gmg-filo.onrender.com'; // <-- Render Backend URL'iniz
 
 const initialVehicles = [
@@ -855,7 +855,7 @@ const handleSaveNewMaintenance = async (e) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch('${API_BASE_URL}/api/maintenance', {
+      const response = await fetch(`${API_BASE_URL}/api/maintenance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -974,7 +974,7 @@ const handleSaveNewDriver = async (e) => {
       };
 
       try {
-        const response = await fetch('${API_BASE_URL}/api/drivers', {
+        const response = await fetch(`${API_BASE_URL}/api/drivers`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1089,7 +1089,7 @@ const handleSaveFullNewVehicle = async (e) => {
 
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch('${API_BASE_URL}/api/vehicles', {
+      const response = await fetch(`${API_BASE_URL}/api/vehicles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1457,7 +1457,7 @@ const handleSaveDriverPageEdit = async (item) => {
       };
 
       try {
-        const response = await fetch('${API_BASE_URL}/api/drivers', {
+        const response = await fetch(`${API_BASE_URL}/api/drivers`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1494,7 +1494,7 @@ const handleDriverDocUploadPage = async (e, item) => {
 
     try {
       // 1. Önce dosyayı /api/upload ile sunucuya (uploads klasörüne) yüklüyoruz
-      const uploadRes = await fetch('${API_BASE_URL}/api/upload', {
+      const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -1736,7 +1736,7 @@ const handleFileUpload = async (e, vehicleId) => {
     const token = localStorage.getItem('gmg_token');
 
     try {
-      const response = await fetch('${API_BASE_URL}/api/upload', {
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -1861,7 +1861,7 @@ const handleSaveCompanyDoc = async (e) => {
         const formData = new FormData();
         formData.append('file', companyDocForm.file);
 
-        const uploadRes = await fetch('${API_BASE_URL}/api/upload', {
+        const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -1888,7 +1888,7 @@ const handleSaveCompanyDoc = async (e) => {
       };
 
       // Backend veritabanına kaydetmek için POST isteği (Kalıcılık için şart)
-      const res = await fetch('${API_BASE_URL}/api/company-docs', {
+      const res = await fetch(`${API_BASE_URL}/api/company-docs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
