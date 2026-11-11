@@ -3,7 +3,7 @@ import {
   Car, ShieldAlert, Calendar, FileText, Wrench, Disc, UserCheck, Key, 
   Plus, Search, ChevronRight, ChevronDown, X, LayoutDashboard, CheckCircle2, 
   FolderDown, Shield, User, ArrowRightLeft, ShieldCheck, Upload, Edit3, Save, 
-  MapPin, Phone, Award, Users, DollarSign, Building2, HardDrive, PlusCircle, ArrowLeft, Trash2, AlertCircle, BarChart3, PieChart, Bell, FileDown, Lock, LogOut
+  MapPin, Phone, Award, Users, DollarSign, Building2, HardDrive, PlusCircle, ArrowLeft, Trash2, AlertCircle, BarChart3, PieChart, Bell, FileDown, Lock, LogOut, Menu
 } from 'lucide-react';
 
 // Şifreler F12'de düz metin görünmesin diye hash/maskelenmiş veya güvenli tutulur
@@ -12,10 +12,9 @@ const initialUsers = [
   { id: 2, username: 'operasyon', password: '123', role: 'user', name: 'Ahmet Operasyon', permissions: ['vehicles', 'maintenance', 'equipments'], actions: { create: true, edit: true, delete: false } },
   { id: 3, username: 'finans', password: '123', role: 'user', name: 'Mehmet Finans', permissions: ['financials', 'reports'], actions: { create: false, edit: false, delete: false } }
 ];
-// Tarayıcı yerelde mi yoksa tünelde mi çalışıyor otomatik anlar:
-// Tarayıcı lokalde mi yoksa Render'da mı çalışıyor otomatik anlar:
+
 const API_BASE_URL = window.location.hostname === 'localhost'
-  ? '${API_BASE_URL}'
+  ? 'http://localhost:5000'
   : 'https://gmg-filo.onrender.com'; // <-- Render Backend URL'iniz
 
 const initialVehicles = [
@@ -105,57 +104,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-const handleSaveNewUser = async (e) => {
-    e.preventDefault();
-    if (!newUserForm.username || !newUserForm.password) {
-      alert('Kullanıcı adı ve şifre zorunludur!');
-      return;
-    }
-
-    const token = localStorage.getItem('gmg_token');
-    const newUserObj = {
-      username: newUserForm.username.toLowerCase().trim(),
-      password: newUserForm.password,
-      name: newUserForm.name || newUserForm.username,
-      role: 'user',
-      permissions: newUserForm.permissions || ['vehicles'],
-      actions: newUserForm.actions || { create: true, edit: true, delete: false }
-    };
-
-    try {
-    const response = await fetch(`${API_BASE_URL}/api/users`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newUserObj)
-    });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setUsersList([...usersList, data.user]);
-        setShowAddUserModal(false);
-        setNewUserForm({
-          username: '',
-          password: '',
-          name: '',
-          permissions: ['vehicles'],
-          actions: { create: true, edit: true, delete: false }
-        });
-        alert('Kullanıcı başarıyla veritabanına eklendi!');
-      } else {
-        alert(data.error || 'Kullanıcı oluşturulamadı!');
-      }
-    } catch (err) {
-      console.error('Kullanıcı ekleme hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
-    }
-  };
-
   const [usersList, setUsersList] = useState([]);
-
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -169,13 +118,13 @@ const handleSaveNewUser = async (e) => {
 
   const [vehicles, setVehicles] = useState([]);
   const [standaloneDrivers, setStandaloneDrivers] = useState([]);
-
   const [maintenanceRecords, setMaintenanceRecords] = useState([]);
   const [companyDocs, setCompanyDocs] = useState([]);
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('gmg_active_tab') || 'all');
   const [isSubMenuOpen, setIsSubMenuOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobilde sol menüyü açıp kapatmak için
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [isEditingModal, setIsEditingModal] = useState(false);
@@ -183,12 +132,11 @@ const handleSaveNewUser = async (e) => {
 
   const [chartModalVehicle, setChartModalVehicle] = useState(null);
   const [kabisConfirmModal, setKabisConfirmModal] = useState({ show: false, vehicleId: null, targetStatus: null, plate: '' });
-
-  const [reportVehicleId, setReportVehicleId] = useState(vehicles[0]?.id || '');
+  const [reportVehicleId, setReportVehicleId] = useState('');
 
   const [showAddMaintenanceModal, setShowAddMaintenanceModal] = useState(false);
   const [newMaintenanceForm, setNewMaintenanceForm] = useState({
-    vehicleId: vehicles[0]?.id || '',
+    vehicleId: '',
     date: new Date().toISOString().split('T')[0],
     km: '',
     type: 'Periyodik Bakım',
@@ -253,70 +201,44 @@ const handleSaveNewUser = async (e) => {
   useEffect(() => { localStorage.setItem('gmg_company_docs', JSON.stringify(companyDocs)); }, [companyDocs]);
   useEffect(() => { localStorage.setItem('gmg_active_tab', activeTab); setSearchQuery(''); }, [activeTab]);
 
-  // Giriş yapıldığında araçları, bakım kayıtlarını ve kullanıcıları backend'den güvenli şekilde çek
   useEffect(() => {
     if (!currentUser) return;
     const token = localStorage.getItem('gmg_token');
     const headers = { 'Authorization': `Bearer ${token}` };
 
-    // Araçları Çek
     fetch(`${API_BASE_URL}/api/vehicles`, { headers })
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setVehicles(data); })
+      .then(data => { 
+        if (Array.isArray(data)) {
+          setVehicles(data);
+          if (data.length > 0 && !reportVehicleId) setReportVehicleId(data[0].id);
+        }
+      })
       .catch(err => console.error('Araçlar yüklenemedi:', err));
 
-// Bakım Kayıtlarını Çek
     fetch(`${API_BASE_URL}/api/maintenance`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setMaintenanceRecords(data); })
       .catch(err => console.error('Bakım kayıtları yüklenemedi:', err));
 
-    // Kullanıcı Listesini Çek
-    fetch(`${API_BASE_URL}/api/users`, { headers })
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setUsersList(data); })
-      .catch(err => console.error('Kullanıcılar yüklenemedi:', err));
-  }, [currentUser]);
-
-useEffect(() => {
-    if (!currentUser) return;
-    const token = localStorage.getItem('gmg_token');
-    const headers = { 'Authorization': `Bearer ${token}` };
-
-   // Araçları Çek
-    fetch(`${API_BASE_URL}/api/vehicles`, { headers })
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setVehicles(data); })
-      .catch(err => console.error('Araçlar yüklenemedi:', err));
-
-    // Bakım Kayıtlarını Çek
-    fetch(`${API_BASE_URL}/api/maintenance`, { headers })
-      .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setMaintenanceRecords(data); })
-      .catch(err => console.error('Bakım kayıtları yüklenemedi:', err));
-
-    // Kullanıcı Listesini Çek
     fetch(`${API_BASE_URL}/api/users`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setUsersList(data); })
       .catch(err => console.error('Kullanıcılar yüklenemedi:', err));
 
-    // Sürücüleri Çek
     fetch(`${API_BASE_URL}/api/drivers`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setStandaloneDrivers(data); })
       .catch(err => console.error('Sürücüler yüklenemedi:', err));
 
-    // Şirket Evraklarını Çek
     fetch(`${API_BASE_URL}/api/company-docs`, { headers })
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setCompanyDocs(data); })
       .catch(err => console.error('Şirket evrakları yüklenemedi:', err));
   }, [currentUser]);
 
-const hasPermission = (permissionId) => {
+  const hasPermission = (permissionId) => {
     if (!currentUser) return false;
-    // Güncel kullanıcıyı her defasında usersList'ten anlık sorguluyoruz
     const freshUser = usersList.find(u => u.username === currentUser.username) || currentUser;
     if (freshUser.role === 'admin' || freshUser.permissions?.includes('all')) return true;
     return freshUser.permissions?.includes(permissionId);
@@ -324,51 +246,35 @@ const hasPermission = (permissionId) => {
 
   const hasActionPermission = (actionType) => {
     if (!currentUser) return false;
-    // Güncel kullanıcıyı her defasında usersList'ten sorguluyoruz
     const freshUser = usersList.find(u => u.username === currentUser.username) || currentUser;
     if (freshUser.role === 'admin' || freshUser.permissions?.includes('all')) return true;
     return freshUser.actions && freshUser.actions[actionType] === true;
   };
-const handleLogin = async (e) => {
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
-
-
-    
     try {
-      // Backend sunucumuza istek gönderiyoruz
       const response = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: loginForm.username,
-          password: loginForm.password
-        })
-    });
-
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginForm.username, password: loginForm.password })
+      });
       const data = await response.json();
-
       if (!response.ok) {
         setLoginError(data.error || 'Giriş yapılamadı!');
         return;
       }
-
-      // Giriş başarılı! Sunucudan gelen güvenli token'ı ve kullanıcıyı kaydediyoruz
       localStorage.setItem('gmg_token', data.token);
       setCurrentUser(data.user);
-
-      // Yetkilere göre açılış sekmesini ayarlıyoruz
       if (data.user.role === 'admin' || data.user.permissions.includes('all') || data.user.permissions.includes('vehicles')) {
         setActiveTab('all');
       } else if (data.user.permissions.length > 0) {
         setActiveTab(data.user.permissions[0]);
       }
-      
     } catch (err) {
       console.error('Bağlantı hatası:', err);
-      setLoginError('Sunucuya bağlanılamadı! Backend (Node.js) çalışıyor mu?');
+      setLoginError('Sunucuya bağlanılamadı!');
     }
   };
 
@@ -377,134 +283,115 @@ const handleLogin = async (e) => {
     localStorage.removeItem('gmg_current_user');
   };
 
-      // Giriş yaparken sakladığımız token'ı alıyoruz
-
-
-const handleDeleteUser = async (userId) => {
-    const target = usersList.find(u => u.id === userId);
-    if (target && target.username === 'admin') {
-      alert('Ana admin kullanıcısı silinemez!');
+  const handleSaveNewUser = async (e) => {
+    e.preventDefault();
+    if (!newUserForm.username || !newUserForm.password) {
+      alert('Kullanıcı adı ve şifre zorunludur!');
       return;
     }
-
-    if (window.confirm('Bu kullanıcıyı hem ekrandan hem de veritabanından silmek istediğinize emin misiniz?')) {
-      const token = localStorage.getItem('gmg_token');
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          // Ekrandaki listeden de siliyoruz
-          setUsersList(usersList.filter(u => u.id !== userId));
-          alert('Kullanıcı veritabanından başarıyla silindi!');
-        } else {
-          alert(data.error || 'Kullanıcı silinemedi!');
-        }
-      } catch (err) {
-        console.error('Kullanıcı silme hatası:', err);
-        alert('Sunucuyla iletişim kurarken hata oluştu!');
+    const token = localStorage.getItem('gmg_token');
+    const newUserObj = {
+      username: newUserForm.username.toLowerCase().trim(),
+      password: newUserForm.password,
+      name: newUserForm.name || newUserForm.username,
+      role: 'user',
+      permissions: newUserForm.permissions || ['vehicles'],
+      actions: newUserForm.actions || { create: true, edit: true, delete: false }
+    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(newUserObj)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUsersList([...usersList, data.user]);
+        setShowAddUserModal(false);
+        setNewUserForm({ username: '', password: '', name: '', permissions: ['vehicles'], actions: { create: true, edit: true, delete: false } });
+        alert('Kullanıcı başarıyla eklendi!');
+      } else {
+        alert(data.error || 'Kullanıcı oluşturulamadı!');
       }
+    } catch (err) {
+      console.error('Kullanıcı ekleme hatası:', err);
+      alert('Sunucuyla iletişim kurarken hata oluştu!');
     }
   };
 
-const handleToggleUserPermission = async (userId, permId) => {
+  const handleDeleteUser = async (userId) => {
+    const target = usersList.find(u => u.id === userId);
+    if (target && target.username === 'admin') { alert('Ana admin silinemez!'); return; }
+    if (window.confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) {
+      const token = localStorage.getItem('gmg_token');
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          setUsersList(usersList.filter(u => u.id !== userId));
+          alert('Kullanıcı silindi!');
+        } else {
+          alert('Silinemedi!');
+        }
+      } catch (err) { console.error(err); }
+    }
+  };
+
+  const handleToggleUserPermission = async (userId, permId) => {
     const token = localStorage.getItem('gmg_token');
-    
-    // Güncellenmiş listeyi hesapla
     const updatedList = usersList.map(u => {
       if (u.id === userId) {
         let perms = [...u.permissions];
-        if (perms.includes(permId)) {
-          perms = perms.filter(p => p !== permId);
-        } else {
-          perms.push(permId);
-        }
+        if (perms.includes(permId)) perms = perms.filter(p => p !== permId);
+        else perms.push(permId);
         return { ...u, permissions: perms };
       }
       return u;
     });
-
     setUsersList(updatedList);
-
-    // Veritabanına kaydetmek için ilgili kullanıcıyı bul ve backend'e gönder
     const targetUser = updatedList.find(u => u.id === userId);
     if (targetUser) {
-      try {
-        await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            permissions: targetUser.permissions,
-            actions: targetUser.actions
-          })
-        });
-      } catch (err) {
-        console.error('Yetki güncelleme hatası:', err);
-      }
+      await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ permissions: targetUser.permissions, actions: targetUser.actions })
+      });
     }
   };
 
   const handleToggleUserAction = async (userId, actionKey) => {
     const token = localStorage.getItem('gmg_token');
-
     const updatedList = usersList.map(u => {
       if (u.id === userId) {
         const currentActions = u.actions || { create: true, edit: true, delete: false };
-        return {
-          ...u,
-          actions: {
-            ...currentActions,
-            [actionKey]: !currentActions[actionKey]
-          }
-        };
+        return { ...u, actions: { ...currentActions, [actionKey]: !currentActions[actionKey] } };
       }
       return u;
     });
-
     setUsersList(updatedList);
-
     const targetUser = updatedList.find(u => u.id === userId);
     if (targetUser) {
-      try {
-        await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            permissions: targetUser.permissions,
-            actions: targetUser.actions
-          })
-        });
-      } catch (err) {
-        console.error('İşlem yetkisi güncelleme hatası:', err);
-      }
+      await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ permissions: targetUser.permissions, actions: targetUser.actions })
+      });
     }
   };
 
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl space-y-6">
+        <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl w-full max-w-md shadow-2xl space-y-6">
           <div className="text-center space-y-2">
             <div className="bg-white p-2 rounded-2xl w-16 h-16 mx-auto flex items-center justify-center shadow-lg shadow-blue-500/10">
               <img src="/logo.png" alt="GMG Logo" className="w-full h-full object-contain" />
             </div>
-            <h1 className="text-2xl font-bold text-white">GMG GRUP FİLO</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">GMG GRUP FİLO</h1>
             <p className="text-xs text-slate-400">Güvenli Şifreli Giriş & Yetkilendirme Paneli</p>
           </div>
-
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-xs text-slate-400 font-medium">Kullanıcı Adı</label>
@@ -528,11 +415,9 @@ const handleToggleUserPermission = async (userId, permId) => {
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white mt-1 focus:outline-none focus:border-blue-500 font-mono"
               />
             </div>
-
             {loginError && (
               <p className="text-xs text-rose-400 font-medium bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20">{loginError}</p>
             )}
-
             <button 
               type="submit" 
               className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-lg text-sm font-bold shadow-lg shadow-blue-600/30 transition cursor-pointer flex items-center justify-center gap-2"
@@ -540,8 +425,6 @@ const handleToggleUserPermission = async (userId, permId) => {
               <Lock size={16} /> Güvenli Giriş Yap
             </button>
           </form>
-
-
         </div>
       </div>
     );
@@ -561,9 +444,7 @@ const handleToggleUserPermission = async (userId, permId) => {
     today.setHours(0, 0, 0, 0);
     const targetDate = new Date(dateStr);
     targetDate.setHours(0, 0, 0, 0);
-
     const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
-
     if (diffDays < 0) return 'expired';
     if (diffDays <= 7) return 'critical';
     return 'normal';
@@ -575,12 +456,7 @@ const handleToggleUserPermission = async (userId, permId) => {
       if (v.driver && v.driver.name && v.driver.name.trim().toLowerCase() !== 'zimmetsiz' && v.driver.name.trim() !== '') {
         const key = v.driver.name.trim().toLowerCase();
         if (!map.has(key)) {
-          map.set(key, {
-            name: v.driver.name,
-            phone: v.driver.phone,
-            licenseClass: v.driver.licenseClass,
-            sourceLabel: `${v.plate} - ${v.brand}`
-          });
+          map.set(key, { name: v.driver.name, phone: v.driver.phone, licenseClass: v.driver.licenseClass, sourceLabel: `${v.plate} - ${v.brand}` });
         }
       }
     });
@@ -588,12 +464,7 @@ const handleToggleUserPermission = async (userId, permId) => {
       if (d && d.name && d.name.trim().toLowerCase() !== 'zimmetsiz' && d.name.trim() !== '') {
         const key = d.name.trim().toLowerCase();
         if (!map.has(key)) {
-          map.set(key, {
-            name: d.name,
-            phone: d.phone,
-            licenseClass: d.licenseClass,
-            sourceLabel: 'Araçsız (Bağımsız)'
-          });
+          map.set(key, { name: d.name, phone: d.phone, licenseClass: d.licenseClass, sourceLabel: 'Araçsız (Bağımsız)' });
         }
       }
     });
@@ -609,96 +480,41 @@ const handleToggleUserPermission = async (userId, permId) => {
       const hasDriver = v.driver && v.driver.name && v.driver.name.trim().toLowerCase() !== 'zimmetsiz' && v.driver.name.trim() !== '';
 
       if (hasDriver && v.kabisStatus === 'Pending') {
-        list.push({
-          id: `kabis-${v.id}`,
-          vehicle: v,
-          type: 'KABİS E-Emniyet Bildirimi',
-          date: 'Acil İşlem',
-          status: 'expired',
-          desc: `Araç (${v.driver.name}) adına zimmetli ancak KABİS sistemine bildirilmemiş!`
-        });
+        list.push({ id: `kabis-${v.id}`, vehicle: v, type: 'KABİS E-Emniyet Bildirimi', date: 'Acil İşlem', status: 'expired', desc: `Araç (${v.driver.name}) adına zimmetli ancak KABİS sistemine bildirilmemiş!` });
       }
-
       if (v.status === 'Rented' && v.contract && v.contract.endDate) {
         const contractStatus = checkDateStatus(v.contract.endDate);
         if (contractStatus !== 'normal') {
-          list.push({
-            id: `contract-${v.id}`,
-            vehicle: v,
-            type: 'Kira Sözleşmesi Bitiş',
-            date: v.contract.endDate,
-            status: contractStatus,
-            desc: contractStatus === 'expired' ? 'Araç kira sözleşme süresi doldu / geçti!' : 'Araç kira sözleşmesinin bitimine 1 haftadan az kaldı!'
-          });
+          list.push({ id: `contract-${v.id}`, vehicle: v, type: 'Kira Sözleşmesi Bitiş', date: v.contract.endDate, status: contractStatus, desc: contractStatus === 'expired' ? 'Kira sözleşme süresi doldu / geçti!' : 'Kira sözleşmesinin bitimine 1 haftadan az kaldı!' });
         }
       }
-
       const inspStatus = checkDateStatus(v.inspectionDate);
       if (inspStatus !== 'normal') {
-        list.push({
-          id: `insp-${v.id}`,
-          vehicle: v,
-          type: 'Muayene Tarihi',
-          date: v.inspectionDate,
-          status: inspStatus,
-          desc: inspStatus === 'expired' ? 'Muayene süresi geçti!' : 'Muayene tarihi 1 hafta içinde doluyor!'
-        });
+        list.push({ id: `insp-${v.id}`, vehicle: v, type: 'Muayene Tarihi', date: v.inspectionDate, status: inspStatus, desc: inspStatus === 'expired' ? 'Muayene süresi geçti!' : 'Muayene tarihi 1 hafta içinde doluyor!' });
       }
-
       const insStatus = checkDateStatus(v.insuranceDate);
       if (insStatus !== 'normal') {
-        list.push({
-          id: `ins-${v.id}`,
-          vehicle: v,
-          type: 'Trafik Sigortası',
-          date: v.insuranceDate,
-          status: insStatus,
-          desc: insStatus === 'expired' ? 'Sigorta poliçe süresi geçti!' : 'Sigorta bitimine 1 haftadan az kaldı!'
-        });
+        list.push({ id: `ins-${v.id}`, vehicle: v, type: 'Trafik Sigortası', date: v.insuranceDate, status: insStatus, desc: insStatus === 'expired' ? 'Sigorta poliçe süresi geçti!' : 'Sigorta bitimine 1 haftadan az kaldı!' });
       }
-
       const cascoStatus = checkDateStatus(v.cascoDate);
       if (cascoStatus !== 'normal') {
-        list.push({
-          id: `casco-${v.id}`,
-          vehicle: v,
-          type: 'Kasko Poliçesi',
-          date: v.cascoDate,
-          status: cascoStatus,
-          desc: cascoStatus === 'expired' ? 'Kasko süresi doldu / geçti!' : 'Kasko bitimine 1 haftadan az kaldı!'
-        });
+        list.push({ id: `casco-${v.id}`, vehicle: v, type: 'Kasko Poliçesi', date: v.cascoDate, status: cascoStatus, desc: cascoStatus === 'expired' ? 'Kasko süresi doldu / geçti!' : 'Kasko bitimine 1 haftadan az kaldı!' });
       }
-
       if (kmDiff <= 1000 || v.status === 'Maintenance') {
-        list.push({
-          id: `maint-${v.id}`,
-          vehicle: v,
-          type: 'Periyodik Bakım',
-          date: `${kmDiff <= 0 ? 'KM Doldu' : `${kmDiff} KM kaldı`}`,
-          status: kmDiff <= 0 ? 'expired' : 'critical',
-          desc: kmDiff <= 0 ? 'Bakım KM sınırı aşıldı!' : 'Bakım kilometresine 1000 KMden az kaldı!'
-        });
+        list.push({ id: `maint-${v.id}`, vehicle: v, type: 'Periyodik Bakım', date: `${kmDiff <= 0 ? 'KM Doldu' : `${kmDiff} KM kaldı`}`, status: kmDiff <= 0 ? 'expired' : 'critical', desc: kmDiff <= 0 ? 'Bakım KM sınırı aşıldı!' : 'Bakım kilometresine 1000 KMden az kaldı!' });
       }
     });
-
     return list.sort((a, b) => (a.status === 'expired' ? -1 : 1));
   };
 
   const notificationList = getNotificationItems();
-
   const filteredNotifications = notificationList.filter(item => {
     const q = searchQuery.toLowerCase();
-    return item.vehicle.plate.toLowerCase().includes(q) ||
-           item.type.toLowerCase().includes(q) ||
-           item.desc.toLowerCase().includes(q) ||
-           item.vehicle.brand.toLowerCase().includes(q) ||
-           item.vehicle.model.toLowerCase().includes(q);
+    return item.vehicle.plate.toLowerCase().includes(q) || item.type.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q) || item.vehicle.brand.toLowerCase().includes(q) || item.vehicle.model.toLowerCase().includes(q);
   });
 
   const filteredVehicles = realVehicles.filter(v => {
-    const matchesSearch = v.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          v.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          v.model.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = v.plate.toLowerCase().includes(searchQuery.toLowerCase()) || v.brand.toLowerCase().includes(searchQuery.toLowerCase()) || v.model.toLowerCase().includes(searchQuery.toLowerCase());
     if (activeTab === 'rented') return matchesSearch && v.status === 'Rented';
     if (activeTab === 'available') return matchesSearch && v.status === 'Available';
     if (activeTab === 'maintenance') return matchesSearch && ((v.nextMaintenanceKm - v.currentKm <= 1000) || v.status === 'Maintenance');
@@ -719,327 +535,142 @@ const handleToggleUserPermission = async (userId, permId) => {
 
   const getAllUniqueDriversMap = () => {
     const map = new Map();
-
     realVehicles.forEach(v => {
       if (v.driver && v.driver.name && v.driver.name.trim().toLowerCase() !== 'zimmetsiz' && v.driver.name.trim() !== '') {
         const key = v.driver.name.trim().toLowerCase();
-        
         if (!map.has(key)) {
-          map.set(key, {
-            key: key,
-            name: v.driver.name,
-            phone: v.driver.phone,
-            licenseClass: v.driver.licenseClass,
-            srcType: v.driver.srcType,
-            srcExpiryDate: v.driver.srcExpiryDate,
-            psychotechnicalDate: v.driver.psychotechnicalDate,
-            documents: v.driver.documents || [],
-            assignedVehicles: [{ vehicleId: v.id, plate: v.plate, brand: v.brand, model: v.model }]
-          });
+          map.set(key, { key, name: v.driver.name, phone: v.driver.phone, licenseClass: v.driver.licenseClass, srcType: v.driver.srcType, srcExpiryDate: v.driver.srcExpiryDate, psychotechnicalDate: v.driver.psychotechnicalDate, documents: v.driver.documents || [], assignedVehicles: [{ vehicleId: v.id, plate: v.plate, brand: v.brand, model: v.model }] });
         } else {
           const existing = map.get(key);
-          const alreadyHasVehicle = existing.assignedVehicles.some(veh => veh.plate === v.plate);
-          if (!alreadyHasVehicle) {
+          if (!existing.assignedVehicles.some(veh => veh.plate === v.plate)) {
             existing.assignedVehicles.push({ vehicleId: v.id, plate: v.plate, brand: v.brand, model: v.model });
           }
         }
       }
     });
-
     standaloneDrivers.forEach(d => {
       if (d && d.name && d.name.trim().toLowerCase() !== 'zimmetsiz' && d.name.trim() !== '') {
         const key = d.name.trim().toLowerCase();
         if (!map.has(key)) {
-          map.set(key, {
-            key: key,
-            name: d.name,
-            phone: d.phone,
-            licenseClass: d.licenseClass,
-            srcType: d.srcType,
-            srcExpiryDate: d.srcExpiryDate,
-            psychotechnicalDate: d.psychotechnicalDate,
-            documents: d.documents || [],
-            assignedVehicles: []
-          });
+          map.set(key, { key, name: d.name, phone: d.phone, licenseClass: d.licenseClass, srcType: d.srcType, srcExpiryDate: d.srcExpiryDate, psychotechnicalDate: d.psychotechnicalDate, documents: d.documents || [], assignedVehicles: [] });
         }
       }
     });
-
     return Array.from(map.values());
   };
 
   const uniqueDriversList = getAllUniqueDriversMap();
-
   const filteredDrivers = uniqueDriversList.filter(item => {
     const q = searchQuery.toLowerCase();
-    const matchesName = item.name.toLowerCase().includes(q);
-    const matchesPhone = (item.phone || '').toLowerCase().includes(q);
-    const matchesVehicle = item.assignedVehicles.some(v => v.plate.toLowerCase().includes(q) || v.brand.toLowerCase().includes(q));
-    return matchesName || matchesPhone || matchesVehicle;
+    return item.name.toLowerCase().includes(q) || (item.phone || '').toLowerCase().includes(q) || item.assignedVehicles.some(v => v.plate.toLowerCase().includes(q) || v.brand.toLowerCase().includes(q));
   });
 
   const filteredMaintenanceRecords = maintenanceRecords.filter(rec => {
     const q = searchQuery.toLowerCase();
-    return (rec.plate || '').toLowerCase().includes(q) ||
-           (rec.type || '').toLowerCase().includes(q) ||
-           (rec.service || '').toLowerCase().includes(q) ||
-           (rec.note || '').toLowerCase().includes(q);
+    return (rec.plate || '').toLowerCase().includes(q) || (rec.type || '').toLowerCase().includes(q) || (rec.service || '').toLowerCase().includes(q) || (rec.note || '').toLowerCase().includes(q);
   });
 
-const handleDeleteDriver = async (item) => {
-    if (!hasActionPermission('delete')) {
-      alert('Bu işlem için silme yetkiniz bulunmuyor!');
-      return;
-    }
+  const handleDeleteDriver = async (item) => {
+    if (!hasActionPermission('delete')) { alert('Bu işlem için silme yetkiniz bulunmuyor!'); return; }
     if (window.confirm(`"${item.name}" isimli sürücüyü silmek istediğinize emin misiniz?`)) {
       const token = localStorage.getItem('gmg_token');
       const nameLower = item.name.trim().toLowerCase();
-
-      // Eğer bir araç üzerinde zimmetliyse, o aracın sürücüsünü "Zimmetsiz" yaparak veritabanına PUT atıyoruz
       for (let v of vehicles) {
         if (v.driver && v.driver.name && v.driver.name.trim().toLowerCase() === nameLower) {
-          const updatedVeh = {
-            ...v,
-            driver: { name: 'Zimmetsiz', phone: '-', licenseClass: '-', srcType: '-', srcExpiryDate: '-', psychotechnicalDate: '-', documents: [] }
-          };
-          await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(updatedVeh)
-          });
+          const updatedVeh = { ...v, driver: { name: 'Zimmetsiz', phone: '-', licenseClass: '-', srcType: '-', srcExpiryDate: '-', psychotechnicalDate: '-', documents: [] } };
+          await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVeh) });
           setVehicles(prev => prev.map(veh => veh.id === v.id ? updatedVeh : veh));
         }
       }
-
-      // Eğer bağımsız sürücüyse veritabanından DELETE atıyoruz
       const foundStandalone = standaloneDrivers.find(d => d.name && d.name.trim().toLowerCase() === nameLower);
       if (foundStandalone) {
         try {
-          await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
           setStandaloneDrivers(prev => prev.filter(d => d.id !== foundStandalone.id));
-        } catch (err) {
-          console.error('Sürücü silme hatası:', err);
-        }
+        } catch (err) { console.error(err); }
       }
-
-      alert('Sürücü sistemden ve veritabanından kaldırıldı!');
+      alert('Sürücü kaldırıldı!');
     }
   };
 
-const handleSaveNewMaintenance = async (e) => {
+  const handleSaveNewMaintenance = async (e) => {
     e.preventDefault();
-    if (!hasActionPermission('create')) {
-      alert('Yeni kayıt ekleme yetkiniz bulunmuyor!');
-      return;
-    }
-
+    if (!hasActionPermission('create')) { alert('Yetkiniz yok!'); return; }
     const targetVeh = realVehicles.find(v => v.id === Number(newMaintenanceForm.vehicleId));
-    if (!targetVeh) {
-      alert('Lütfen geçerli bir araç seçiniz!');
-      return;
-    }
-
-    const newRec = {
-      vehicleId: Number(newMaintenanceForm.vehicleId),
-      plate: targetVeh.plate,
-      date: newMaintenanceForm.date,
-      km: Number(newMaintenanceForm.km),
-      type: newMaintenanceForm.type,
-      cost: Number(newMaintenanceForm.cost) || 0,
-      service: newMaintenanceForm.service || 'Yetkili Servis',
-      note: newMaintenanceForm.note || '-'
-    };
-
+    if (!targetVeh) { alert('Araç seçiniz!'); return; }
+    const newRec = { vehicleId: Number(newMaintenanceForm.vehicleId), plate: targetVeh.plate, date: newMaintenanceForm.date, km: Number(newMaintenanceForm.km), type: newMaintenanceForm.type, cost: Number(newMaintenanceForm.cost) || 0, service: newMaintenanceForm.service || 'Yetkili Servis', note: newMaintenanceForm.note || '-' };
     const token = localStorage.getItem('gmg_token');
     try {
-      const response = await fetch('${API_BASE_URL}/api/maintenance', {
+      const response = await fetch(`${API_BASE_URL}/api/maintenance`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(newRec)
       });
-
       const data = await response.json();
       if (response.ok) {
         setMaintenanceRecords([{ ...newRec, id: data.id }, ...maintenanceRecords]);
         setShowAddMaintenanceModal(false);
-        setNewMaintenanceForm({
-          vehicleId: realVehicles[0]?.id || '',
-          date: new Date().toISOString().split('T')[0],
-          km: '',
-          type: 'Periyodik Bakım',
-          cost: '',
-          service: '',
-          note: ''
-        });
-        alert('Bakım kaydı veritabanına başarıyla eklendi!');
-      } else {
-        alert(data.error || 'Bakım kaydedilemedi!');
+        setNewMaintenanceForm({ vehicleId: realVehicles[0]?.id || '', date: new Date().toISOString().split('T')[0], km: '', type: 'Periyodik Bakım', cost: '', service: '', note: '' });
+        alert('Bakım eklendi!');
       }
-    } catch (err) {
-      console.error('Bakım ekleme hatası:', err);
-      alert('Sunucu hatası!');
-    }
+    } catch (err) { console.error(err); }
   };
 
-const handleDeleteMaintenanceRecord = async (recId) => {
-    if (!hasActionPermission('delete')) {
-      alert('Kayıt silme yetkiniz bulunmuyor!');
-      return;
-    }
-    if (window.confirm('Bu bakım kaydını silmek istediğinize emin misiniz?')) {
+  const handleDeleteMaintenanceRecord = async (recId) => {
+    if (!hasActionPermission('delete')) return;
+    if (window.confirm('Silmek istediğinize emin misiniz?')) {
       const token = localStorage.getItem('gmg_token');
       try {
-        const response = await fetch(`${API_BASE_URL}/api/maintenance/${recId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-          setMaintenanceRecords(maintenanceRecords.filter(r => r.id !== recId));
-          alert('Bakım kaydı veritabanından silindi!');
-        } else {
-          alert('Bakım kaydı silinemedi!');
-        }
-      } catch (err) {
-        console.error('Bakım silme hatası:', err);
-        alert('Sunucu hatası!');
-      }
+        await fetch(`${API_BASE_URL}/api/maintenance/${recId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        setMaintenanceRecords(maintenanceRecords.filter(r => r.id !== recId));
+      } catch (err) { console.error(err); }
     }
   };
 
-const handleSaveNewDriver = async (e) => {
+  const handleSaveNewDriver = async (e) => {
     e.preventDefault();
-    if (!hasActionPermission('create')) {
-      alert('Yeni sürücü ekleme yetkiniz bulunmuyor!');
-      return;
-    }
-
+    if (!hasActionPermission('create')) { alert('Yetkiniz yok!'); return; }
     const token = localStorage.getItem('gmg_token');
-    
-    // Eğer bir araca atanacaksa önce aracı güncelliyoruz, bağımsızsa /api/drivers'a kaydediyoruz
     if (newDriverForm.targetVehicleId) {
       const targetVehicle = vehicles.find(v => v.id === Number(newDriverForm.targetVehicleId));
       if (!targetVehicle) return;
-
       const updatedVehicleData = {
         ...targetVehicle,
-        driver: {
-          id: Date.now(),
-          name: newDriverForm.name,
-          phone: newDriverForm.phone,
-          licenseClass: newDriverForm.licenseClass || 'B',
-          srcType: newDriverForm.srcType || 'SRC-2',
-          srcExpiryDate: newDriverForm.srcExpiryDate || '-',
-          psychotechnicalDate: newDriverForm.psychotechnicalDate || '-',
-          documents: targetVehicle.driver?.documents || []
-        }
+        driver: { id: Date.now(), name: newDriverForm.name, phone: newDriverForm.phone, licenseClass: newDriverForm.licenseClass || 'B', srcType: newDriverForm.srcType || 'SRC-2', srcExpiryDate: newDriverForm.srcExpiryDate || '-', psychotechnicalDate: newDriverForm.psychotechnicalDate || '-', documents: targetVehicle.driver?.documents || [] }
       };
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/vehicles/${targetVehicle.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updatedVehicleData)
-        });
-
-        if (response.ok) {
-          setVehicles(vehicles.map(v => v.id === targetVehicle.id ? updatedVehicleData : v));
-          alert('Sürücü araca başarıyla zimmetlendi ve veritabanına kaydedildi!');
-        } else {
-          alert('Sürücü eklenemedi!');
-        }
-      } catch (err) {
-        console.error('Sürücü ekleme hatası:', err);
-        alert('Sunucu hatası!');
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${targetVehicle.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+      if (response.ok) {
+        setVehicles(vehicles.map(v => v.id === targetVehicle.id ? updatedVehicleData : v));
+        alert('Sürücü araca zimmetlendi!');
       }
     } else {
-      // Bağımsız Sürücü
-      const newStandalone = {
-        name: newDriverForm.name,
-        phone: newDriverForm.phone,
-        licenseClass: newDriverForm.licenseClass || 'B',
-        srcType: newDriverForm.srcType || 'SRC-2',
-        srcExpiryDate: newDriverForm.srcExpiryDate || '',
-        psychotechnicalDate: newDriverForm.psychotechnicalDate || '',
-        documents: []
-      };
-
-      try {
-        const response = await fetch('${API_BASE_URL}/api/drivers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(newStandalone)
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          setStandaloneDrivers([{ ...newStandalone, id: data.id }, ...standaloneDrivers]);
-          alert('Bağımsız sürücü veritabanına kaydedildi!');
-        } else {
-          alert(data.error || 'Sürücü kaydedilemedi!');
-        }
-      } catch (err) {
-        console.error('Sürücü ekleme hatası:', err);
-        alert('Sunucu hatası!');
+      const newStandalone = { name: newDriverForm.name, phone: newDriverForm.phone, licenseClass: newDriverForm.licenseClass || 'B', srcType: newDriverForm.srcType || 'SRC-2', srcExpiryDate: newDriverForm.srcExpiryDate || '', psychotechnicalDate: newDriverForm.psychotechnicalDate || '', documents: [] };
+      const response = await fetch(`${API_BASE_URL}/api/drivers`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(newStandalone) });
+      const data = await response.json();
+      if (response.ok) {
+        setStandaloneDrivers([{ ...newStandalone, id: data.id }, ...standaloneDrivers]);
+        alert('Sürücü kaydedildi!');
       }
     }
-
     setShowAddDriverModal(false);
-    setNewDriverForm({
-      targetVehicleId: '',
-      name: '',
-      phone: '',
-      licenseClass: 'B',
-      srcType: 'SRC-2',
-      srcExpiryDate: '',
-      psychotechnicalDate: ''
-    });
+    setNewDriverForm({ targetVehicleId: '', name: '', phone: '', licenseClass: 'B', srcType: 'SRC-2', srcExpiryDate: '', psychotechnicalDate: '' });
   };
 
-const handleDeleteVehicle = async (vehicleId) => {
-    if (window.confirm('Bu aracı veritabanından ve sistemden silmek istediğinize emin misiniz?')) {
+  const handleDeleteVehicle = async (vehicleId) => {
+    if (window.confirm('Aracı silmek istediğinize emin misiniz?')) {
       const token = localStorage.getItem('gmg_token');
       try {
-        const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          // Doğru state fonksiyonu olan setVehicles kullanılıyor
-          setVehicles(vehicles.filter(v => v.id !== vehicleId));
-          alert('Araç veritabanından başarıyla silindi!');
-        } else {
-          alert('Araç silinemedi!');
-        }
-      } catch (err) {
-        console.error('Araç silme hatası:', err);
-        alert('Sunucuyla iletişim kurarken hata oluştu!');
-      }
+        await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        setVehicles(vehicles.filter(v => v.id !== vehicleId));
+        setSelectedVehicle(null);
+        alert('Araç silindi!');
+      } catch (err) { console.error(err); }
     }
   };
 
-const handleSaveFullNewVehicle = async (e) => {
+  const handleSaveFullNewVehicle = async (e) => {
     e.preventDefault();
-    if (!hasActionPermission('create')) {
-      alert('Yeni araç ekleme yetkiniz bulunmuyor!');
-      return;
-    }
-
+    if (!hasActionPermission('create')) { alert('Yetkiniz yok!'); return; }
     const newVehiclePayload = {
       plate: fullNewVehicle.plate.toUpperCase(),
       brand: fullNewVehicle.brand,
@@ -1055,70 +686,19 @@ const handleSaveFullNewVehicle = async (e) => {
       cascoPolicyNo: fullNewVehicle.cascoPolicyNo || '-',
       kabisStatus: 'Pending',
       kabisIdentityNo: '-',
-      financials: {
-        monthlyIncome: Number(fullNewVehicle.monthlyIncome) || 0,
-        insuranceCost: Number(fullNewVehicle.insuranceCost) || 0,
-        otherExpenses: Number(fullNewVehicle.otherExpenses) || 0
-      },
-      tires: fullNewVehicle.tireBrand ? [
-        {
-          id: Date.now() + 1,
-          position: fullNewVehicle.tirePosition,
-          type: fullNewVehicle.tireType,
-          brand: fullNewVehicle.tireBrand,
-          serialNo: fullNewVehicle.tireSerialNo || '-',
-          depth: fullNewVehicle.tireDepth || '8.0mm',
-          status: 'Kullanımda',
-          location: fullNewVehicle.tireLocation || 'Araç Üzerinde',
-          phone: fullNewVehicle.tirePhone || '-'
-        }
-      ] : [],
-      driver: {
-        id: Date.now() + 2,
-        name: fullNewVehicle.driverName || 'Zimmetsiz',
-        phone: fullNewVehicle.driverPhone || '-',
-        licenseClass: fullNewVehicle.licenseClass || '-',
-        srcType: fullNewVehicle.srcType || '-',
-        srcExpiryDate: fullNewVehicle.srcExpiryDate || '-',
-        psychotechnicalDate: fullNewVehicle.psychotechnicalDate || '-',
-        documents: []
-      },
+      financials: { monthlyIncome: Number(fullNewVehicle.monthlyIncome) || 0, insuranceCost: Number(fullNewVehicle.insuranceCost) || 0, otherExpenses: Number(fullNewVehicle.otherExpenses) || 0 },
+      tires: fullNewVehicle.tireBrand ? [{ id: Date.now() + 1, position: fullNewVehicle.tirePosition, type: fullNewVehicle.tireType, brand: fullNewVehicle.tireBrand, serialNo: fullNewVehicle.tireSerialNo || '-', depth: fullNewVehicle.tireDepth || '8.0mm', status: 'Kullanımda', location: fullNewVehicle.tireLocation || 'Araç Üzerinde', phone: fullNewVehicle.tirePhone || '-' }] : [],
+      driver: { id: Date.now() + 2, name: fullNewVehicle.driverName || 'Zimmetsiz', phone: fullNewVehicle.driverPhone || '-', licenseClass: fullNewVehicle.licenseClass || '-', srcType: fullNewVehicle.srcType || '-', srcExpiryDate: fullNewVehicle.srcExpiryDate || '-', psychotechnicalDate: fullNewVehicle.psychotechnicalDate || '-', documents: [] },
       contract: null,
       documents: []
     };
-
     const token = localStorage.getItem('gmg_token');
-    try {
-      const response = await fetch('${API_BASE_URL}/api/vehicles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newVehiclePayload)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Backend'den dönen gerçek ID ile nesneyi oluşturuyoruz
-        const newVehicleObj = { ...newVehiclePayload, id: data.id };
-        setVehicles([newVehicleObj, ...vehicles]);
-        setActiveTab('all');
-        setFullNewVehicle({
-          plate: '', brand: '', model: '', year: 2026, status: 'Available', currentKm: 0, nextMaintenanceKm: 15000,
-          inspectionDate: '', insuranceDate: '', insurancePolicyNo: '', cascoDate: '', cascoPolicyNo: '',
-          monthlyIncome: 0, maintenanceCost: 0, insuranceCost: 0, otherExpenses: 0,
-          driverName: '', driverPhone: '', licenseClass: 'B', srcType: 'SRC-2', srcExpiryDate: '', psychotechnicalDate: '',
-          tirePosition: 'Üzerinde Takılı', tireType: 'Yazlık', tireBrand: '', tireSerialNo: '', tireDepth: '8.0mm', tireLocation: 'Araç Üzerinde', tirePhone: ''
-        });
-        alert('Yeni araç veritabanına başarıyla kaydedildi!');
-      } else {
-        alert(data.error || 'Araç eklenemedi!');
-      }
-    } catch (err) {
-      console.error('Araç ekleme hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
+    const response = await fetch(`${API_BASE_URL}/api/vehicles`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(newVehiclePayload) });
+    const data = await response.json();
+    if (response.ok) {
+      setVehicles([{ ...newVehiclePayload, id: data.id }, ...vehicles]);
+      setActiveTab('all');
+      alert('Araç eklendi!');
     }
   };
 
@@ -1128,968 +708,368 @@ const handleSaveFullNewVehicle = async (e) => {
     setIsEditingModal(false);
   };
 
-const handleSaveVehicleEdit = async (e) => {
+  const handleSaveVehicleEdit = async (e) => {
     e.preventDefault();
-    if (!hasActionPermission('edit')) {
-      alert('Bilgi düzenleme / güncelleme yetkiniz bulunmuyor!');
-      return;
-    }
-    
+    if (!hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
     if (!editForm || !editForm.id) return;
-
     const token = localStorage.getItem('gmg_token');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles/${editForm.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(editForm)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const updated = vehicles.map(v => v.id === editForm.id ? editForm : v);
-        setVehicles(updated);
-        setSelectedVehicle(editForm);
-        setIsEditingModal(false);
-        alert('Araç bilgileri veritabanında başarıyla güncellendi!');
-      } else {
-        alert(data.error || 'Araç güncellenemedi!');
-      }
-    } catch (err) {
-      console.error('Araç güncelleme hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
+    const response = await fetch(`${API_BASE_URL}/api/vehicles/${editForm.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(editForm) });
+    if (response.ok) {
+      setVehicles(vehicles.map(v => v.id === editForm.id ? editForm : v));
+      setSelectedVehicle(editForm);
+      setIsEditingModal(false);
+      alert('Güncellendi!');
     }
   };
 
-const handleRentVehicle = async (e) => {
+  const handleRentVehicle = async (e) => {
     e.preventDefault();
-    if (!hasActionPermission('edit')) {
-      alert('Kiralama işlemi yapma yetkiniz bulunmuyor!');
-      return;
-    }
+    if (!hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
     if (!selectedVehicle) return;
-
     const updatedVehicleData = {
       ...selectedVehicle,
       status: 'Rented',
       kabisIdentityNo: rentForm.tcNo || '11111111111',
-      driver: { 
-        name: rentForm.driverName, 
-        phone: rentForm.driverPhone, 
-        licenseClass: 'B',
-        srcType: 'SRC-2',
-        srcExpiryDate: '-',
-        psychotechnicalDate: '-',
-        documents: []
-      },
+      driver: { name: rentForm.driverName, phone: rentForm.driverPhone, licenseClass: 'B', srcType: 'SRC-2', srcExpiryDate: '-', psychotechnicalDate: '-', documents: [] },
       contract: { customer: rentForm.customer, monthlyFee: rentForm.monthlyFee + ' TL', endDate: rentForm.endDate }
     };
-
     const token = localStorage.getItem('gmg_token');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles/${selectedVehicle.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedVehicleData)
-      });
-
-      if (response.ok) {
-        const updated = vehicles.map(v => v.id === selectedVehicle.id ? updatedVehicleData : v);
-        setVehicles(updated);
-        setSelectedVehicle(updatedVehicleData);
-        setEditForm(updatedVehicleData);
-        setShowRentModal(false);
-        alert('Araç başarıyla kiraya verildi ve veritabanına kaydedildi!');
-      } else {
-        alert('Kiralama işlemi veritabanına kaydedilemedi!');
-      }
-    } catch (err) {
-      console.error('Kiralama hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
+    const response = await fetch(`${API_BASE_URL}/api/vehicles/${selectedVehicle.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+    if (response.ok) {
+      setVehicles(vehicles.map(v => v.id === selectedVehicle.id ? updatedVehicleData : v));
+      setSelectedVehicle(updatedVehicleData);
+      setEditForm(updatedVehicleData);
+      setShowRentModal(false);
+      alert('Kiraya verildi!');
     }
   };
 
-const handleReturnToGarage = async (vehicleId) => {
-    if (!hasActionPermission('edit')) {
-      alert('Durum değiştirme yetkiniz bulunmuyor!');
-      return;
-    }
+  const handleReturnToGarage = async (vehicleId) => {
+    if (!hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
     const targetVehicle = vehicles.find(v => v.id === vehicleId);
     if (!targetVehicle) return;
-
-    const updatedVehicleData = {
-      ...targetVehicle,
-      status: 'Available',
-      kabisStatus: 'Pending',
-      kabisIdentityNo: '-',
-      driver: { name: 'Zimmetsiz', phone: '-', licenseClass: '-', srcType: '-', srcExpiryDate: '-', psychotechnicalDate: '-', documents: [] },
-      contract: null
-    };
-
+    const updatedVehicleData = { ...targetVehicle, status: 'Available', kabisStatus: 'Pending', kabisIdentityNo: '-', driver: { name: 'Zimmetsiz', phone: '-', licenseClass: '-', srcType: '-', srcExpiryDate: '-', psychotechnicalDate: '-', documents: [] }, contract: null };
     const token = localStorage.getItem('gmg_token');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedVehicleData)
-      });
-
-      if (response.ok) {
-        const updated = vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v);
-        setVehicles(updated);
-        if (selectedVehicle && selectedVehicle.id === vehicleId) {
-          setSelectedVehicle(updatedVehicleData);
-          setEditForm(updatedVehicleData);
-        }
-        alert('Araç garaja alındı ve veritabanında güncellendi!');
-      } else {
-        alert('Durum veritabanında güncellenemedi!');
-      }
-    } catch (err) {
-      console.error('Garaja dönüş hatası:', err);
-      alert('Sunucu hatası!');
+    const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+    if (response.ok) {
+      setVehicles(vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v));
+      if (selectedVehicle?.id === vehicleId) { setSelectedVehicle(updatedVehicleData); setEditForm(updatedVehicleData); }
+      alert('Garaja alındı!');
     }
   };
 
-const handleSetMaintenanceStatus = async (vehicleId) => {
-    if (!hasActionPermission('edit')) {
-      alert('Düzenleme yetkiniz bulunmuyor!');
-      return;
-    }
+  const handleSetMaintenanceStatus = async (vehicleId) => {
+    if (!hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
     const targetVehicle = vehicles.find(v => v.id === vehicleId);
     if (!targetVehicle) return;
-
     const updatedVehicleData = { ...targetVehicle, status: 'Maintenance' };
-
     const token = localStorage.getItem('gmg_token');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedVehicleData)
-      });
-
-      if (response.ok) {
-        const updated = vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v);
-        setVehicles(updated);
-        if (selectedVehicle && selectedVehicle.id === vehicleId) {
-          setSelectedVehicle(updatedVehicleData);
-          setEditForm(updatedVehicleData);
-        }
-        alert('Araç bakıma alındı ve veritabanına kaydedildi!');
-      } else {
-        alert('Bakım durumu güncellenemedi!');
-      }
-    } catch (err) {
-      console.error('Bakım durumu hatası:', err);
-      alert('Sunucu hatası!');
+    const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+    if (response.ok) {
+      setVehicles(vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v));
+      if (selectedVehicle?.id === vehicleId) { setSelectedVehicle(updatedVehicleData); setEditForm(updatedVehicleData); }
+      alert('Bakıma alındı!');
     }
   };
 
   const handleInitiateKabisToggle = (vehicle) => {
-    const newTarget = vehicle.kabisStatus === 'Registered' ? 'Pending' : 'Registered';
-    setKabisConfirmModal({
-      show: true,
-      vehicleId: vehicle.id,
-      targetStatus: newTarget,
-      plate: vehicle.plate
-    });
+    setKabisConfirmModal({ show: true, vehicleId: vehicle.id, targetStatus: vehicle.kabisStatus === 'Registered' ? 'Pending' : 'Registered', plate: vehicle.plate });
   };
 
-const handleConfirmKabisChange = async () => {
-    if (!hasActionPermission('edit')) {
-      alert('KABİS durumunu güncelleme yetkiniz bulunmuyor!');
-      setKabisConfirmModal({ show: false, vehicleId: null, targetStatus: null, plate: '' });
-      return;
-    }
+  const handleConfirmKabisChange = async () => {
+    if (!hasActionPermission('edit')) { alert('Yetkiniz yok!'); setKabisConfirmModal({ show: false, vehicleId: null, targetStatus: null, plate: '' }); return; }
     const { vehicleId, targetStatus } = kabisConfirmModal;
     const targetVehicle = vehicles.find(v => v.id === vehicleId);
     if (!targetVehicle) return;
-
     const updatedVehicleData = { ...targetVehicle, kabisStatus: targetStatus };
-
     const token = localStorage.getItem('gmg_token');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedVehicleData)
-      });
-
-      if (response.ok) {
-        const updated = vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v);
-        setVehicles(updated);
-        
-        if (selectedVehicle && selectedVehicle.id === vehicleId) {
-          setSelectedVehicle(updatedVehicleData);
-          setEditForm(updatedVehicleData);
-        }
-
-        alert('KABİS durumu veritabanında güncellendi!');
-      } else {
-        alert('KABİS durumu güncellenemedi!');
-      }
-    } catch (err) {
-      console.error('KABİS güncelleme hatası:', err);
-      alert('Sunucu hatası!');
-    } finally {
-      setKabisConfirmModal({ show: false, vehicleId: null, targetStatus: null, plate: '' });
+    const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+    if (response.ok) {
+      setVehicles(vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v));
+      if (selectedVehicle?.id === vehicleId) { setSelectedVehicle(updatedVehicleData); setEditForm(updatedVehicleData); }
+      alert('KABİS güncellendi!');
     }
+    setKabisConfirmModal({ show: false, vehicleId: null, targetStatus: null, plate: '' });
   };
 
-const handleStartDriverEdit = (item) => {
-    if (!hasActionPermission('edit')) {
-      alert('Düzenleme yetkiniz bulunmuyor!');
-      return;
-    }
+  const handleStartDriverEdit = (item) => {
+    if (!hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
     setEditingDriverKey(item.key);
-    setDriverEditForm({
-      name: item.name,
-      phone: item.phone,
-      licenseClass: item.licenseClass,
-      srcType: item.srcType || 'SRC-2',
-      srcExpiryDate: item.srcExpiryDate || ''
-    });
+    setDriverEditForm({ name: item.name, phone: item.phone, licenseClass: item.licenseClass, srcType: item.srcType || 'SRC-2', srcExpiryDate: item.srcExpiryDate || '' });
   };
 
-const handleSaveDriverPageEdit = async (item) => {
-    if (!hasActionPermission('edit')) {
-      alert('Kaydetme yetkiniz bulunmuyor!');
-      return;
-    }
+  const handleSaveDriverPageEdit = async (item) => {
+    if (!hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
     const token = localStorage.getItem('gmg_token');
     const nameLower = item.name.trim().toLowerCase();
-    
     let updatedAny = false;
-
-    // 1. Eğer bu sürücü bir araca zimmetliyse, ilgili araçların sürücü bilgisini güncelle
     const updatedVehicles = [...vehicles];
     for (let i = 0; i < updatedVehicles.length; i++) {
       let v = updatedVehicles[i];
       if (v.driver && v.driver.name && v.driver.name.trim().toLowerCase() === nameLower) {
         updatedAny = true;
-        const updatedDriverObj = {
-          ...v.driver,
-          name: driverEditForm.name,
-          phone: driverEditForm.phone,
-          licenseClass: driverEditForm.licenseClass,
-          srcType: driverEditForm.srcType,           // <-- Eklendi
-          srcExpiryDate: driverEditForm.srcExpiryDate // <-- Eklendi
-        };
+        const updatedDriverObj = { ...v.driver, name: driverEditForm.name, phone: driverEditForm.phone, licenseClass: driverEditForm.licenseClass, srcType: driverEditForm.srcType, srcExpiryDate: driverEditForm.srcExpiryDate };
         const updatedVehData = { ...v, driver: updatedDriverObj };
-        
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(updatedVehData)
-          });
-          if (res.ok) {
-            updatedVehicles[i] = updatedVehData;
-          }
-        } catch (err) {
-          console.error('Araç sürücü güncelleme hatası:', err);
-        }
+        const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehData) });
+        if (res.ok) updatedVehicles[i] = updatedVehData;
       }
     }
-    if (updatedAny) {
-      setVehicles(updatedVehicles);
-    }
+    if (updatedAny) setVehicles(updatedVehicles);
 
-    // 2. Bağımsız sürücüyü güncelle (ID veya isim eşleşmesiyle)
     let foundStandalone = standaloneDrivers.find(d => (item.id && d.id === item.id) || (d.name && d.name.trim().toLowerCase() === nameLower));
-    
     if (foundStandalone) {
-      updatedAny = true;
-      const updatedStandaloneData = {
-        ...foundStandalone,
-        name: driverEditForm.name,
-        phone: driverEditForm.phone,
-        licenseClass: driverEditForm.licenseClass,
-        srcType: driverEditForm.srcType,           // <-- Eklendi
-        srcExpiryDate: driverEditForm.srcExpiryDate // <-- Eklendi
-      };
-
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updatedStandaloneData)
-        });
-        if (res.ok) {
-          setStandaloneDrivers(prev => prev.map(d => d.id === foundStandalone.id ? updatedStandaloneData : d));
-        }
-      } catch (err) {
-        console.error('Bağımsız sürücü güncelleme hatası:', err);
-      }
-    } else if (!updatedAny) {
-      // Eğer sistemde kayıtlı bulunamadıysa yeni bağımsız sürücü olarak veritabanına kaydet
-      const newStandalone = {
-        name: driverEditForm.name,
-        phone: driverEditForm.phone,
-        licenseClass: driverEditForm.licenseClass || 'B',
-        srcType: driverEditForm.srcType || 'SRC-2',
-        srcExpiryDate: driverEditForm.srcExpiryDate || '',
-        psychotechnicalDate: '',
-        documents: []
-      };
-
-      try {
-        const response = await fetch('${API_BASE_URL}/api/drivers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(newStandalone)
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setStandaloneDrivers(prev => [{ ...newStandalone, id: data.id }, ...prev]);
-        }
-      } catch (err) {
-        console.error('Yeni bağımsız sürücü oluşturma hatası:', err);
-      }
+      const updatedStandaloneData = { ...foundStandalone, name: driverEditForm.name, phone: driverEditForm.phone, licenseClass: driverEditForm.licenseClass, srcType: driverEditForm.srcType, srcExpiryDate: driverEditForm.srcExpiryDate };
+      const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedStandaloneData) });
+      if (res.ok) setStandaloneDrivers(prev => prev.map(d => d.id === foundStandalone.id ? updatedStandaloneData : d));
     }
-
     setEditingDriverKey(null);
-    alert('Sürücü bilgileri başarıyla güncellendi!');
+    alert('Güncellendi!');
   };
 
-
-
-const handleDriverDocUploadPage = async (e, item) => {
-    if (!hasActionPermission('create') && !hasActionPermission('edit')) {
-      alert('Evrak yükleme yetkiniz bulunmuyor!');
-      return;
-    }
+  const handleDriverDocUploadPage = async (e, item) => {
+    if (!hasActionPermission('create') && !hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
     const file = e.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append('file', file);
     const token = localStorage.getItem('gmg_token');
-
     try {
-      // 1. Önce dosyayı /api/upload ile sunucuya (uploads klasörüne) yüklüyoruz
-      const uploadRes = await fetch('${API_BASE_URL}/api/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-
+      const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
       const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) {
-        alert(uploadData.error || 'Dosya yüklenemedi!');
-        return;
-      }
-
-      const newDoc = {
-        id: Date.now(),
-        name: uploadData.fileName || file.name,
-        type: file.name.toLowerCase().includes('src') ? 'SRC Belgesi' : 'Psikoteknik / Ehliyet',
-        date: new Date().toISOString().split('T')[0],
-        fileUrl: uploadData.fileUrl // Sunucudaki kalıcı URL
-      };
-
+      if (!uploadRes.ok) { alert(uploadData.error || 'Yüklenemedi!'); return; }
+      const newDoc = { id: Date.now(), name: uploadData.fileName || file.name, type: 'Evrak', date: new Date().toISOString().split('T')[0], fileUrl: uploadData.fileUrl };
       const nameLower = item.name.trim().toLowerCase();
       let updated = false;
-
-      // 2. Eğer bu sürücü bir araca zimmetliyse, aracın driver.documents dizisine ekleyip PUT atıyoruz
       const updatedVehicles = [...vehicles];
       for (let i = 0; i < updatedVehicles.length; i++) {
         let v = updatedVehicles[i];
         if (v.driver && v.driver.name && v.driver.name.trim().toLowerCase() === nameLower) {
           updated = true;
-          const currentDocs = v.driver.documents || [];
-          const updatedDriverObj = { ...v.driver, documents: [...currentDocs, newDoc] };
+          const updatedDriverObj = { ...v.driver, documents: [...(v.driver.documents || []), newDoc] };
           const updatedVehData = { ...v, driver: updatedDriverObj };
-
-          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(updatedVehData)
-          });
-          if (res.ok) {
-            updatedVehicles[i] = updatedVehData;
-          }
+          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehData) });
+          if (res.ok) updatedVehicles[i] = updatedVehData;
         }
       }
-      if (updated) {
-        setVehicles(updatedVehicles);
-      }
-
-      // 3. Eğer bağımsız sürücüyse, /api/drivers/:id endpoint'ine PUT atıyoruz
+      if (updated) setVehicles(updatedVehicles);
       const foundStandalone = standaloneDrivers.find(d => d.name && d.name.trim().toLowerCase() === nameLower);
       if (foundStandalone) {
-        const currentDocs = foundStandalone.documents || [];
-        const updatedStandaloneData = { ...foundStandalone, documents: [...currentDocs, newDoc] };
-
-        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updatedStandaloneData)
-        });
-        if (res.ok) {
-          setStandaloneDrivers(prev => prev.map(d => d.id === foundStandalone.id ? updatedStandaloneData : d));
-        }
+        const updatedStandaloneData = { ...foundStandalone, documents: [...(foundStandalone.documents || []), newDoc] };
+        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedStandaloneData) });
+        if (res.ok) setStandaloneDrivers(prev => prev.map(d => d.id === foundStandalone.id ? updatedStandaloneData : d));
       }
-
-      alert('Sürücü evrakı başarıyla yüklendi ve veritabanına kaydedildi!');
-    } catch (err) {
-      console.error('Sürücü evrak yükleme hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
-    }
+      alert('Evrak yüklendi!');
+    } catch (err) { console.error(err); }
   };
 
   const handleDeleteDriverDoc = async (item, docId) => {
-    if (!hasActionPermission('delete')) {
-      alert('Evrak silme yetkiniz bulunmuyor!');
-      return;
-    }
-    if (window.confirm('Bu sürücü evrakını silmek istediğinize emin misiniz?')) {
+    if (!hasActionPermission('delete')) { alert('Yetkiniz yok!'); return; }
+    if (window.confirm('Silmek istediğinize emin misiniz?')) {
       const token = localStorage.getItem('gmg_token');
       const nameLower = item.name.trim().toLowerCase();
       let updated = false;
-
-      // 1. Araç üzerindeki sürücünün evraklarından silip PUT atıyoruz
       const updatedVehicles = [...vehicles];
       for (let i = 0; i < updatedVehicles.length; i++) {
         let v = updatedVehicles[i];
         if (v.driver && v.driver.name && v.driver.name.trim().toLowerCase() === nameLower) {
           updated = true;
-          const filteredDocs = (v.driver.documents || []).filter(d => d.id !== docId);
-          const updatedDriverObj = { ...v.driver, documents: filteredDocs };
+          const updatedDriverObj = { ...v.driver, documents: (v.driver.documents || []).filter(d => d.id !== docId) };
           const updatedVehData = { ...v, driver: updatedDriverObj };
-
-          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(updatedVehData)
-          });
-          if (res.ok) {
-            updatedVehicles[i] = updatedVehData;
-          }
+          const res = await fetch(`${API_BASE_URL}/api/vehicles/${v.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehData) });
+          if (res.ok) updatedVehicles[i] = updatedVehData;
         }
       }
-      if (updated) {
-        setVehicles(updatedVehicles);
-      }
-
-      // 2. Bağımsız sürücünün evraklarından silip PUT atıyoruz
+      if (updated) setVehicles(updatedVehicles);
       const foundStandalone = standaloneDrivers.find(d => d.name && d.name.trim().toLowerCase() === nameLower);
       if (foundStandalone) {
-        const filteredDocs = (foundStandalone.documents || []).filter(doc => doc.id !== docId);
-        const updatedStandaloneData = { ...foundStandalone, documents: filteredDocs };
-
-        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updatedStandaloneData)
-        });
-        if (res.ok) {
-          setStandaloneDrivers(prev => prev.map(d => d.id === foundStandalone.id ? updatedStandaloneData : d));
-        }
+        const updatedStandaloneData = { ...foundStandalone, documents: (foundStandalone.documents || []).filter(d => d.id !== docId) };
+        const res = await fetch(`${API_BASE_URL}/api/drivers/${foundStandalone.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedStandaloneData) });
+        if (res.ok) setStandaloneDrivers(prev => prev.map(d => d.id === foundStandalone.id ? updatedStandaloneData : d));
       }
-
-      alert('Sürücü evrakı veritabanından başarıyla silindi!');
+      alert('Silindi!');
     }
   };
 
   const handleOpenAddTireModal = (vehicleId, tireToEdit = null) => {
-    if (tireToEdit && !hasActionPermission('edit')) {
-      alert('Lastik düzenleme yetkiniz bulunmuyor!');
-      return;
-    }
-    if (!tireToEdit && !hasActionPermission('create')) {
-      alert('Yeni lastik ekleme yetkiniz bulunmuyor!');
-      return;
-    }
+    if (tireToEdit && !hasActionPermission('edit')) { alert('Yetkiniz yok!'); return; }
+    if (!tireToEdit && !hasActionPermission('create')) { alert('Yetkiniz yok!'); return; }
     setSelectedTireVehicleId(vehicleId);
-    if (tireToEdit) {
-      setEditingTireId(tireToEdit.id);
-      setTireForm({ ...tireToEdit });
-    } else {
-      setEditingTireId(null);
-      setTireForm({ position: 'Üzerinde Takılı', type: 'Yazlık', brand: '', serialNo: '', depth: '8.0mm', location: 'Araç Üzerinde', phone: '' });
-    }
+    if (tireToEdit) { setEditingTireId(tireToEdit.id); setTireForm({ ...tireToEdit }); }
+    else { setEditingTireId(null); setTireForm({ position: 'Üzerinde Takılı', type: 'Yazlık', brand: '', serialNo: '', depth: '8.0mm', location: 'Araç Üzerinde', phone: '' }); }
     setShowTireModal(true);
   };
 
-const handleSaveTire = async (e) => {
+  const handleSaveTire = async (e) => {
     e.preventDefault();
     if (!selectedTireVehicleId) return;
-
     const targetVehicle = vehicles.find(v => v.id === selectedTireVehicleId);
     if (!targetVehicle) return;
-
     let currentTires = targetVehicle.tires || [];
-    if (editingTireId) {
-      currentTires = currentTires.map(t => t.id === editingTireId ? { ...tireForm, id: editingTireId } : t);
-    } else {
-      currentTires = [...currentTires, { ...tireForm, id: Date.now() }];
-    }
-
+    if (editingTireId) currentTires = currentTires.map(t => t.id === editingTireId ? { ...tireForm, id: editingTireId } : t);
+    else currentTires = [...currentTires, { ...tireForm, id: Date.now() }];
     const updatedVehicleData = { ...targetVehicle, tires: currentTires };
-
     const token = localStorage.getItem('gmg_token');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/vehicles/${selectedTireVehicleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedVehicleData)
-      });
-
-      if (response.ok) {
-        setVehicles(vehicles.map(v => v.id === selectedTireVehicleId ? updatedVehicleData : v));
-        setShowTireModal(false);
-        alert('Lastik bilgileri veritabanında güncellendi!');
-      } else {
-        alert('Lastik kaydedilemedi!');
-      }
-    } catch (err) {
-      console.error('Lastik kaydetme hatası:', err);
-      alert('Sunucu hatası!');
+    const response = await fetch(`${API_BASE_URL}/api/vehicles/${selectedTireVehicleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+    if (response.ok) {
+      setVehicles(vehicles.map(v => v.id === selectedTireVehicleId ? updatedVehicleData : v));
+      setShowTireModal(false);
+      alert('Lastik kaydedildi!');
     }
   };
 
-const handleDeleteTire = async (vehicleId, tireId) => {
-    if (!hasActionPermission('delete')) {
-      alert('Lastik silme yetkiniz bulunmuyor!');
-      return;
-    }
-    if (window.confirm('Bu lastik tanımını silmek istediğinize emin misiniz?')) {
+  const handleDeleteTire = async (vehicleId, tireId) => {
+    if (!hasActionPermission('delete')) { alert('Yetkiniz yok!'); return; }
+    if (window.confirm('Silmek istediğinize emin misiniz?')) {
       const targetVehicle = vehicles.find(v => v.id === vehicleId);
       if (!targetVehicle) return;
-
-      const updatedTires = (targetVehicle.tires || []).filter(t => t.id !== tireId);
-      const updatedVehicleData = { ...targetVehicle, tires: updatedTires };
-
+      const updatedVehicleData = { ...targetVehicle, tires: (targetVehicle.tires || []).filter(t => t.id !== tireId) };
       const token = localStorage.getItem('gmg_token');
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updatedVehicleData)
-        });
-
-        if (response.ok) {
-          setVehicles(vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v));
-          alert('Lastik veritabanından silindi!');
-        } else {
-          alert('Lastik silinemedi!');
-        }
-      } catch (err) {
-        console.error('Lastik silme hatası:', err);
-        alert('Sunucu hatası!');
+      const response = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+      if (response.ok) {
+        setVehicles(vehicles.map(v => v.id === vehicleId ? updatedVehicleData : v));
+        alert('Silindi!');
       }
     }
   };
 
-// PDF Dosya Yükleme Desteği
-const handleFileUpload = async (e, vehicleId) => {
+  const handleFileUpload = async (e, vehicleId) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append('file', file);
     const token = localStorage.getItem('gmg_token');
-
     try {
-      const response = await fetch('${API_BASE_URL}/api/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-
+      const response = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
       const data = await response.json();
       if (response.ok) {
-        const newDoc = {
-          id: Date.now(),
-          name: data.fileName,
-          type: 'Poliçe / Belge',
-          date: new Date().toISOString().split('T')[0],
-          fileUrl: data.fileUrl
-        };
-
-        // İlgili aracı bulup güncel documents listesini hazırlıyoruz
+        const newDoc = { id: Date.now(), name: data.fileName, type: 'Poliçe / Belge', date: new Date().toISOString().split('T')[0], fileUrl: data.fileUrl };
         let updatedVehicleData = null;
-
         const newVehicles = vehicles.map(v => {
           if (v.id === vehicleId) {
-            const updatedDocs = [...(v.documents || []), newDoc];
-            updatedVehicleData = { ...v, documents: updatedDocs };
+            updatedVehicleData = { ...v, documents: [...(v.documents || []), newDoc] };
             return updatedVehicleData;
           }
           return v;
         });
-
-        // 1. Frontend state'ini güncelle
         setVehicles(newVehicles);
-
-        // 2. Veritabanında kalıcı olması için backend'e PUT isteği atıyoruz
         if (updatedVehicleData) {
-          await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(updatedVehicleData)
-          });
+          await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
         }
-
-        alert('Araç evrakı başarıyla yüklendi ve kaydedildi!');
-      } else {
-        alert(data.error || 'Dosya yüklenemedi!');
+        alert('Evrak yüklendi!');
       }
-    } catch (err) {
-      console.error('Dosya yükleme hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
-    }
+    } catch (err) { console.error(err); }
   };
 
-const handleDeleteVehicleDoc = async (vehicleId, docId) => {
-    if (!hasActionPermission('delete')) {
-      alert('Evrak silme yetkiniz bulunmuyor!');
-      return;
-    }
-
-    if (window.confirm('Bu araç evrakını silmek istediğinize emin misiniz?')) {
+  const handleDeleteVehicleDoc = async (vehicleId, docId) => {
+    if (!hasActionPermission('delete')) { alert('Yetkiniz yok!'); return; }
+    if (window.confirm('Silmek istediğinize emin misiniz?')) {
       const token = localStorage.getItem('gmg_token');
       let updatedVehicleData = null;
-
       const newVehicles = vehicles.map(v => {
         if (v.id === vehicleId) {
-          const filteredDocs = v.documents.filter(d => d.id !== docId);
-          updatedVehicleData = { ...v, documents: filteredDocs };
+          updatedVehicleData = { ...v, documents: v.documents.filter(d => d.id !== docId) };
           return updatedVehicleData;
         }
         return v;
       });
-
-      try {
-        // Backend'e güncel aracı gönderiyoruz (silinen evrak veritabanından da uçuyor)
-        if (updatedVehicleData) {
-          const res = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(updatedVehicleData)
-          });
-
-          if (res.ok) {
-            setVehicles(newVehicles);
-            alert('Evrak başarıyla silindi!');
-          } else {
-            alert('Evrak veritabanından silinemedi!');
-          }
-        }
-      } catch (err) {
-        console.error('Evrak silme hatası:', err);
-        alert('Sunucuyla iletişim kurarken hata oluştu!');
+      if (updatedVehicleData) {
+        const res = await fetch(`${API_BASE_URL}/api/vehicles/${vehicleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(updatedVehicleData) });
+        if (res.ok) { setVehicles(newVehicles); alert('Silindi!'); }
       }
     }
   };
 
-  const handleCompanyPdfSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setCompanyDocForm(prev => ({
-      ...prev,
-      name: file.name,
-      fileUrl: URL.createObjectURL(file)
-    }));
-  };
-
-const handleSaveCompanyDoc = async (e) => {
+  const handleSaveCompanyDoc = async (e) => {
     e.preventDefault();
-    if (!hasActionPermission('create')) {
-      alert('Şirket evrakı ekleme yetkiniz bulunmuyor!');
-      return;
-    }
-
+    if (!hasActionPermission('create')) { alert('Yetkiniz yok!'); return; }
     const token = localStorage.getItem('gmg_token');
     let uploadedFileUrl = companyDocForm.fileUrl || '#';
     let uploadedFileName = companyDocForm.name || 'Sirket_Sozlesmesi.pdf';
-
     try {
-      // Eğer kullanıcı bir dosya seçtiyse, önce sunucuya (uploads klasörüne) yükle
       if (companyDocForm.file) {
         const formData = new FormData();
         formData.append('file', companyDocForm.file);
-
-        const uploadRes = await fetch('${API_BASE_URL}/api/upload', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-
+        const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
         const uploadData = await uploadRes.json();
-        if (uploadRes.ok) {
-          uploadedFileUrl = uploadData.fileUrl;   // Örn: ${API_BASE_URL}/uploads/17000...pdf
-          uploadedFileName = uploadData.fileName; // Orijinal dosya adı
-        } else {
-          alert(uploadData.error || 'Dosya sunucuya yüklenemedi!');
-          return;
-        }
+        if (uploadRes.ok) { uploadedFileUrl = uploadData.fileUrl; uploadedFileName = uploadData.fileName; }
       }
-
-      // Yeni evrak objesi
-      const newDoc = {
-        name: uploadedFileName,
-        category: companyDocForm.category,
-        company: companyDocForm.company || 'GMG GRUP',
-        date: new Date().toISOString().split('T')[0],
-        expiry: companyDocForm.expiry || '2026-12-31',
-        fileUrl: uploadedFileUrl
-      };
-
-      // Backend veritabanına kaydetmek için POST isteği (Kalıcılık için şart)
-      const res = await fetch('${API_BASE_URL}/api/company-docs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newDoc)
-      });
-
+      const newDoc = { name: uploadedFileName, category: companyDocForm.category, company: companyDocForm.company || 'GMG GRUP', date: new Date().toISOString().split('T')[0], expiry: companyDocForm.expiry || '2026-12-31', fileUrl: uploadedFileUrl };
+      const res = await fetch(`${API_BASE_URL}/api/company-docs`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(newDoc) });
       const data = await res.json();
       if (res.ok) {
-        // Frontend state'ini güncelle
         setCompanyDocs([data.doc || newDoc, ...companyDocs]);
         setShowCompanyDocModal(false);
         setCompanyDocForm({ name: '', category: 'Uzun Vadeli Şirket Sözleşmesi', company: '', expiry: '', fileUrl: '#', file: null });
-        alert('Şirket evrakı başarıyla yüklendi ve kaydedildi!');
-      } else {
-        alert(data.error || 'Evrak kaydedilemedi!');
+        alert('Kaydedildi!');
       }
-
-    } catch (err) {
-      console.error('Şirket evrakı yükleme hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
-    }
+    } catch (err) { console.error(err); }
   };
-const handleDeleteCompanyDoc = async (id) => {
-    if (!hasActionPermission('delete')) {
-      alert('Şirket evrakı silme yetkiniz bulunmuyor!');
-      return;
-    }
 
-    if (!window.confirm('Bu evrakı kalıcı olarak silmek istediğinize emin misiniz?')) {
-      return;
-    }
-
+  const handleDeleteCompanyDoc = async (id) => {
+    if (!hasActionPermission('delete')) { alert('Yetkiniz yok!'); return; }
+    if (!window.confirm('Silmek istediğinize emin misiniz?')) return;
     const token = localStorage.getItem('gmg_token');
-
     try {
-      // Backend'e silme isteği gönderiyoruz
-      const res = await fetch(`${API_BASE_URL}/api/company-docs/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (res.ok) {
-        // İstek başarılı olursa ekrandan da kaldırıyoruz
-        setCompanyDocs(companyDocs.filter(doc => doc.id !== id));
-        alert('Evrak başarıyla silindi!');
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Evrak silinemedi!');
-      }
-    } catch (err) {
-      console.error('Silme hatası:', err);
-      alert('Sunucuyla iletişim kurarken hata oluştu!');
-    }
+      const res = await fetch(`${API_BASE_URL}/api/company-docs/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) { setCompanyDocs(companyDocs.filter(doc => doc.id !== id)); alert('Silindi!'); }
+    } catch (err) { console.error(err); }
   };
 
   const handleDownloadVehicleReportPdf = (veh) => {
     if (!veh) return;
     const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Lütfen tarayıcınızın açılır pencere (popup) engelleyicisini kapatın.');
-      return;
-    }
-
+    if (!printWindow) return;
     const vehicleMainTires = veh.tires && veh.tires.length > 0 ? veh.tires[0] : { type: '-', brand: '-', depth: '-' };
     const vehMainMaint = maintenanceRecords.filter(r => r.vehicleId === veh.id);
-
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="tr">
-      <head>
-        <meta charset="UTF-8">
-        <title>Araç Raporu - ${veh.plate}</title>
-        <style>
-          body { font-family: Helvetica, Arial, sans-serif; color: #1e293b; padding: 30px; margin: 0; background: #fff; }
-          .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; border-bottom: 2px solid #0f172a; padding-bottom: 15px; }
-          .logo-img { width: 70px; height: auto; object-fit: contain; }
-          .header-title { text-align: center; flex: 1; }
-          .logo-title { font-size: 18px; font-weight: bold; color: #0f172a; margin: 0; letter-spacing: 1px; }
-          .section-title { font-size: 14px; font-weight: bold; background: #1e293b; color: #fff; padding: 8px 12px; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
-          th { background: #f1f5f9; color: #0f172a; font-weight: bold; }
-          .label-col { width: 40%; font-weight: bold; color: #334155; background: #f8fafc; }
-          .value-col { width: 60%; color: #0f172a; }
-          .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-          @media print {
-            body { padding: 10px; }
-            .no-print { display: none; }
-          }
-        </style>
+      <head><meta charset="UTF-8"><title>Rapor - ${veh.plate}</title>
+      <style>body{font-family:Arial,sans-serif;padding:20px;color:#333;}table{width:100%;border-collapse:collapse;margin-bottom:15px;font-size:12px;}th,td{border:1px solid #ccc;padding:6px;text-align:left;}th{background:#eee;}</style>
       </head>
       <body>
-        <div class="header">
-          <img src="/logo.png" alt="GMG Grup Logo" class="logo-img" onerror="this.style.display='none'" />
-          <div class="header-title">
-            <div class="logo-title">GMG GRUP FİLO - ARAÇ RAPOR ÇIKTISI</div>
-            <div style="font-size: 11px; color: #64748b; margin-top: 3px;">Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}</div>
-          </div>
-        </div>
-
+        <h2>GMG GRUP - ARAÇ RAPORU: ${veh.plate}</h2>
         <table>
-          <tr><td class="label-col">ARAÇ PLAKASI:</td><td class="value-col"><b>${veh.plate}</b></td></tr>
-          <tr><td class="label-col">MARKA:</td><td class="value-col">${veh.brand}</td></tr>
-          <tr><td class="label-col">MODEL:</td><td class="value-col">${veh.model}</td></tr>
-          <tr><td class="label-col">MODEL YILI:</td><td class="value-col">${veh.year}</td></tr>
-          <tr><td class="label-col">MEVCUT KM:</td><td class="value-col">${veh.currentKm?.toLocaleString()} KM</td></tr>
-          <tr><td class="label-col">SONRAKİ BAKIM KM:</td><td class="value-col">${veh.nextMaintenanceKm?.toLocaleString()} KM</td></tr>
-          <tr><td class="label-col">MUAYENE BİTİŞ TARİHİ:</td><td class="value-col">${veh.inspectionDate || '-'}</td></tr>
-          <tr><td class="label-col">TRAFİK SİGORTASI BİTİŞ TARİHİ:</td><td class="value-col">${veh.insuranceDate || '-'}</td></tr>
-          <tr><td class="label-col">SİGORTA POLİÇE NO:</td><td class="value-col">${veh.insurancePolicyNo || '-'}</td></tr>
-          <tr><td class="label-col">KASKO POLİÇE BİTİŞ TARİHİ:</td><td class="value-col">${veh.cascoDate || '-'}</td></tr>
-          <tr><td class="label-col">KASKO POLİÇE NO:</td><td class="value-col">${veh.cascoPolicyNo || '-'}</td></tr>
-          <tr><td class="label-col">KİRA GELİRİ:</td><td class="value-col">${veh.financials?.monthlyIncome?.toLocaleString() || 0} TL / Ay</td></tr>
-          <tr><td class="label-col">KASKO TUTARI:</td><td class="value-col">${veh.financials?.insuranceCost?.toLocaleString() || 0} TL / Ay</td></tr>
-          <tr><td class="label-col">SİGORTA TUTARI:</td><td class="value-col">1,800 TL / Ay</td></tr>
-          <tr><td class="label-col">DİĞER AYLIK GİDERLER:</td><td class="value-col">${veh.financials?.otherExpenses?.toLocaleString() || 0} TL</td></tr>
-          <tr><td class="label-col">ZİMMETLİ SÜRÜCÜ:</td><td class="value-col">${veh.driver?.name || 'Zimmetsiz'}</td></tr>
-          <tr><td class="label-col">ZİMMETLİ SÜRÜCÜ TEL NO:</td><td class="value-col">${veh.driver?.phone || '-'}</td></tr>
-          <tr><td class="label-col">LASTİK TİPİ:</td><td class="value-col">${vehicleMainTires.type}</td></tr>
-          <tr><td class="label-col">LASTİK MARKASI VE EBATI:</td><td class="value-col">${vehicleMainTires.brand} (${vehicleMainTires.depth})</td></tr>
+          <tr><td><b>Marka / Model:</b></td><td>${veh.brand} ${veh.model} (${veh.year})</td></tr>
+          <tr><td><b>Mevcut KM:</b></td><td>${veh.currentKm?.toLocaleString()} KM</td></tr>
+          <tr><td><b>Muayene Bitiş:</b></td><td>${veh.inspectionDate || '-'}</td></tr>
+          <tr><td><b>Sigorta Bitiş:</b></td><td>${veh.insuranceDate || '-'}</td></tr>
+          <tr><td><b>Zimmetli Sürücü:</b></td><td>${veh.driver?.name || 'Zimmetsiz'} (${veh.driver?.phone || '-'})</td></tr>
         </table>
-
-        <div class="section-title">BAKIM GEÇMİŞİ</div>
+        <h3>Bakım Geçmişi</h3>
         <table>
-          <thead>
-            <tr>
-              <th>Bakım Türü</th>
-              <th>Tarih</th>
-              <th>Bakım KM</th>
-              <th>Servis / Nokta</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${vehMainMaint.length === 0 ? '<tr><td colspan="4" style="text-align:center; color:#64748b;">Kayıtlı bakım geçmişi bulunmuyor.</td></tr>' : 
-              vehMainMaint.map(m => `
-                <tr>
-                  <td><b>${m.type}</b></td>
-                  <td>${m.date}</td>
-                  <td>${m.km?.toLocaleString()} KM</td>
-                  <td>${m.service}</td>
-                </tr>
-              `).join('')}
-          </tbody>
+          <tr><th>Tür</th><th>Tarih</th><th>KM</th><th>Maliyet</th></tr>
+          ${vehMainMaint.map(m => `<tr><td>${m.type}</td><td>${m.date}</td><td>${m.km}</td><td>${m.cost} TL</td></tr>`).join('')}
         </table>
-
-        <div class="section-title">MALİYET & AÇIKLAMA DETAYLARI</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Maliyet</th>
-              <th>Açıklama / Not</th>
-              <th>İşlem Durumu</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${vehMainMaint.length === 0 ? '<tr><td colspan="3" style="text-align:center; color:#64748b;">Kayıt bulunmuyor.</td></tr>' : 
-              vehMainMaint.map(m => `
-                <tr>
-                  <td style="color: #e11d48; font-weight: bold;">${m.cost?.toLocaleString()} TL</td>
-                  <td>${m.note || '-'}</td>
-                  <td>Tamamlandı</td>
-                </tr>
-              `).join('')}
-          </tbody>
-        </table>
-
-        <div style="text-align: center; margin-top: 30px;" class="no-print">
-          <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 12px 24px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer;">PDF Olarak Kaydet / Yazdır</button>
-        </div>
-
-        <div class="footer">
-          GMG GRUP Araç Takip & Yönetim Sistemi - Bu belge elektronik olarak oluşturulmuştur.
-        </div>
-      </body>
-      </html>
+        <script>window.print();</script>
+      </body></html>
     `;
-
     printWindow.document.write(htmlContent);
     printWindow.document.close();
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-950 text-slate-100 font-sans">
       <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* SOL MENÜ */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
+      {/* MOBİL BAŞLIK VE HAMBURGER MENÜ BUTONU */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shrink-0">
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="GMG Logo" className="w-8 h-8 object-contain bg-white rounded p-0.5" />
+          <h1 className="font-bold text-white text-sm">GMG GRUP FİLO</h1>
+        </div>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 bg-slate-800 text-slate-200 rounded-lg">
+          <Menu size={20} />
+        </button>
+      </div>
+
+      {/* SOL MENÜ (MOBİLDE TOGGLE İLE AÇILIR/KAPANIR, MASAÜSTÜNDE SABİT) */}
+      <aside className={`w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 ${mobileMenuOpen ? 'block' : 'hidden md:flex'}`}>
         <div>
-          <div className="p-5 border-b border-slate-800 flex items-center gap-3">
+          <div className="p-5 border-b border-slate-800 hidden md:flex items-center gap-3">
             <div className="bg-white p-1 rounded-xl shadow-lg shadow-blue-500/10 flex items-center justify-center w-10 h-10 shrink-0">
               <img src="/logo.png" alt="GMG Logo" className="w-full h-full object-contain" />
             </div>
@@ -2126,7 +1106,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 {isSubMenuOpen && (
                   <div className="ml-4 mt-1 pl-3 border-l-2 border-slate-800 space-y-1 transition-all duration-300">
                     <button 
-                      onClick={() => setActiveTab('all')}
+                      onClick={() => { setActiveTab('all'); setMobileMenuOpen(false); }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs transition cursor-pointer ${
                         activeTab === 'all' ? 'text-white bg-slate-800 font-bold' : 'text-slate-400 hover:text-white'
                       }`}
@@ -2134,7 +1114,7 @@ const handleDeleteCompanyDoc = async (id) => {
                       • Hepsi ({realVehicles.length})
                     </button>
                     <button 
-                      onClick={() => setActiveTab('rented')}
+                      onClick={() => { setActiveTab('rented'); setMobileMenuOpen(false); }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
                         activeTab === 'rented' ? 'text-emerald-400 bg-slate-800 font-bold' : 'text-slate-400 hover:text-white'
                       }`}
@@ -2145,7 +1125,7 @@ const handleDeleteCompanyDoc = async (id) => {
                       </span>
                     </button>
                     <button 
-                      onClick={() => setActiveTab('available')}
+                      onClick={() => { setActiveTab('available'); setMobileMenuOpen(false); }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
                         activeTab === 'available' ? 'text-blue-400 bg-slate-800 font-bold' : 'text-slate-400 hover:text-white'
                       }`}
@@ -2156,7 +1136,7 @@ const handleDeleteCompanyDoc = async (id) => {
                       </span>
                     </button>
                     <button 
-                      onClick={() => setActiveTab('maintenance')}
+                      onClick={() => { setActiveTab('maintenance'); setMobileMenuOpen(false); }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
                         activeTab === 'maintenance' ? 'text-amber-400 bg-slate-800 font-bold' : 'text-slate-400 hover:text-white'
                       }`}
@@ -2173,7 +1153,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('reports') && (
               <button 
-                onClick={() => setActiveTab('report_generator')}
+                onClick={() => { setActiveTab('report_generator'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer mt-1 ${
                   activeTab === 'report_generator' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2184,7 +1164,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('notifications') && (
               <button 
-                onClick={() => setActiveTab('notifications')}
+                onClick={() => { setActiveTab('notifications'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition cursor-pointer mt-1 ${
                   activeTab === 'notifications' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2203,7 +1183,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('maintenance') && (
               <button 
-                onClick={() => setActiveTab('maintenance_history')}
+                onClick={() => { setActiveTab('maintenance_history'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer mt-1 ${
                   activeTab === 'maintenance_history' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2214,7 +1194,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('equipments') && (
               <button 
-                onClick={() => setActiveTab('equipments')}
+                onClick={() => { setActiveTab('equipments'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer ${
                   activeTab === 'equipments' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2225,7 +1205,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('drivers') && (
               <button 
-                onClick={() => setActiveTab('drivers')}
+                onClick={() => { setActiveTab('drivers'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer ${
                   activeTab === 'drivers' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2236,7 +1216,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('financials') && (
               <button 
-                onClick={() => setActiveTab('financials')}
+                onClick={() => { setActiveTab('financials'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer ${
                   activeTab === 'financials' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2247,7 +1227,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('documents') && (
               <button 
-                onClick={() => setActiveTab('documents')}
+                onClick={() => { setActiveTab('documents'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer ${
                   activeTab === 'documents' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2258,7 +1238,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {hasPermission('company_docs') && (
               <button 
-                onClick={() => setActiveTab('company_docs')}
+                onClick={() => { setActiveTab('company_docs'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer ${
                   activeTab === 'company_docs' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2269,7 +1249,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {currentUser.role === 'admin' && (
               <button 
-                onClick={() => setActiveTab('user_management')}
+                onClick={() => { setActiveTab('user_management'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer mt-3 border-t border-slate-800 pt-3 ${
                   activeTab === 'user_management' ? 'bg-purple-600 text-white font-semibold shadow-md shadow-purple-600/30' : 'text-purple-400 hover:bg-slate-800 hover:text-white'
                 }`}
@@ -2291,11 +1271,11 @@ const handleDeleteCompanyDoc = async (id) => {
         </div>
       </aside>
 
-      {/* İÇERİK ALANI */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      {/* ANA İÇERİK ALANI (MOBİLDE ESNEK DÜZEN VE TAŞMA KORUMASI) */}
+      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto w-full max-w-full overflow-x-hidden">
         {activeTab === 'user_management' && currentUser.role === 'admin' ? (
           <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex justify-between items-center bg-slate-900 border border-slate-800 p-6 rounded-xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800 p-6 rounded-xl">
               <div>
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                   <Shield className="text-purple-400" /> Kullanıcı & İşlem Yetki Matrisi (CRUD)
@@ -2330,10 +1310,9 @@ const handleDeleteCompanyDoc = async (id) => {
                     <p className="text-xs text-slate-400 italic">Sistem yöneticisi tüm ekleme, düzenleme ve silme yetkilerine otomatik olarak sahiptir.</p>
                   ) : (
                     <div className="space-y-4">
-                      {/* İŞLEM YETKİLERİ (EKLEME, DÜZENLEME, SİLME) */}
                       <div className="bg-slate-950 p-3.5 rounded-lg border border-slate-800 space-y-2">
                         <span className="text-xs font-bold text-cyan-400 block uppercase tracking-wide">Genel İşlem Yetkileri (CRUD)</span>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <label className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition ${usr.actions?.create ? 'bg-emerald-600/10 border-emerald-500/40 text-emerald-300 font-medium' : 'bg-slate-900 border-slate-800 text-slate-400'}`}>
                             <input 
                               type="checkbox" 
@@ -2364,7 +1343,6 @@ const handleDeleteCompanyDoc = async (id) => {
                         </div>
                       </div>
 
-                      {/* MODÜL / SEKME ERİŞİM YETKİLERİ */}
                       <div className="space-y-2">
                         <span className="text-xs font-semibold text-slate-300 block">Erişilebilecek Modüller & Sekmeler:</span>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -2395,15 +1373,15 @@ const handleDeleteCompanyDoc = async (id) => {
             {activeTab !== 'add_new_vehicle_page' && activeTab !== 'report_generator' && (
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-white">GMG GRUP Filo Paneli</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white">GMG GRUP Filo Paneli</h2>
                   <p className="text-slate-400 text-xs mt-1">KABİS, Sözleşme Bitiş Takibi, Poliçeler (PDF) & Kar Analizi</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <div className="relative w-full md:w-64">
                     <Search className="absolute left-3 top-2.5 text-slate-500" size={18} />
                     <input 
                       type="text" 
-                      placeholder={activeTab === 'notifications' ? 'Bildirimlerde Ara (Plaka, Tür)...' : 'Plaka veya Marka Ara...'}
+                      placeholder={activeTab === 'notifications' ? 'Bildirimlerde Ara...' : 'Plaka veya Marka Ara...'}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
@@ -2418,7 +1396,7 @@ const handleDeleteCompanyDoc = async (id) => {
                       }
                       setShowAddMaintenanceModal(true);
                     }}
-                    className="bg-amber-600 hover:bg-amber-500 text-white text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 font-semibold transition shadow-lg shadow-amber-600/25 cursor-pointer shrink-0"
+                    className="bg-amber-600 hover:bg-amber-500 text-white text-xs px-4 py-2.5 rounded-lg flex items-center justify-center gap-1.5 font-semibold transition shadow-lg shadow-amber-600/25 cursor-pointer shrink-0"
                   >
                     <Plus size={16} /> Yeni Bakım Ekle
                   </button>
@@ -2427,7 +1405,7 @@ const handleDeleteCompanyDoc = async (id) => {
                   {activeTab === 'drivers' && hasPermission('drivers') && hasActionPermission('create') && (
                     <button 
                       onClick={() => setShowAddDriverModal(true)}
-                      className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 font-semibold transition shadow-lg shadow-purple-600/20 cursor-pointer shrink-0"
+                      className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-4 py-2.5 rounded-lg flex items-center justify-center gap-1.5 font-semibold transition shadow-lg shadow-purple-600/20 cursor-pointer shrink-0"
                     >
                       <Plus size={16} /> Yeni Sürücü Ekle
                     </button>
@@ -2436,7 +1414,7 @@ const handleDeleteCompanyDoc = async (id) => {
                   {(activeTab === 'all' || activeTab === 'rented' || activeTab === 'available' || activeTab === 'maintenance') && hasPermission('vehicles') && hasActionPermission('create') && (
                     <button 
                       onClick={() => setActiveTab('add_new_vehicle_page')}
-                      className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 font-semibold transition shadow-lg shadow-blue-600/20 cursor-pointer shrink-0"
+                      className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-2.5 rounded-lg flex items-center justify-center gap-1.5 font-semibold transition shadow-lg shadow-blue-600/20 cursor-pointer shrink-0"
                     >
                       <Plus size={16} /> Yeni Araç Ekle
                     </button>
@@ -2480,11 +1458,11 @@ const handleDeleteCompanyDoc = async (id) => {
                   </div>
 
                   {selectedReportVeh && (
-                    <div className="bg-white text-slate-900 p-8 rounded-xl shadow-2xl space-y-6 border border-slate-300">
+                    <div className="bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-2xl space-y-6 border border-slate-300 overflow-x-auto">
                       <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
                         <img src="/logo.png" alt="GMG Logo" className="w-16 h-16 object-contain" />
                         <div className="text-center flex-1">
-                          <div className="font-extrabold text-xl tracking-wide text-slate-900">GMG GRUP FİLO - ARAÇ RAPORU</div>
+                          <div className="font-extrabold text-lg sm:text-xl tracking-wide text-slate-900">GMG GRUP FİLO - ARAÇ RAPORU</div>
                           <div className="text-xs text-slate-500 mt-1">Kurumsal Araç Bilgileri ve Bakım Dökümü</div>
                         </div>
                         <div className="w-16"></div>
@@ -2577,14 +1555,14 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {activeTab === 'notifications' && hasPermission('notifications') && (
               <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
                       <Bell className="text-rose-400" /> Filo Bildirim & Kritik Tarih Takip Merkezi
                     </h3>
                     <p className="text-slate-400 text-xs">Kasko, muayene, sigorta, bakım süreleri, kira sözleşmesi bitenler ve birine zimmetli olup KABİS bildirimi yapılmamış tüm araçlar aşağıda acil olarak listelenmektedir.</p>
                   </div>
-                  <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs font-bold">
+                  <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">
                     Toplam Kritik Uyarı: {filteredNotifications.length}
                   </span>
                 </div>
@@ -2611,7 +1589,7 @@ const handleDeleteCompanyDoc = async (id) => {
                             <AlertCircle size={22} />
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <h4 className="font-bold text-white text-base font-mono">{item.vehicle.plate}</h4>
                               <span className="text-xs text-slate-400">({item.vehicle.brand} {item.vehicle.model})</span>
                               <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
@@ -2628,7 +1606,7 @@ const handleDeleteCompanyDoc = async (id) => {
                         <div className="flex items-center gap-2 shrink-0">
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleOpenDetailModal(item.vehicle); }}
-                            className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer"
+                            className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-1 cursor-pointer w-full sm:w-auto justify-center"
                           >
                             Aracı İncele & Güncelle <ChevronRight size={14} />
                           </button>
@@ -2669,7 +1647,7 @@ const handleDeleteCompanyDoc = async (id) => {
                             <h4 className="font-bold text-white text-base font-mono group-hover:text-blue-400 transition">{v.plate}</h4>
                             <p className="text-xs text-slate-400">{v.brand} {v.model}</p>
                           </div>
-                          <span className={`text-sm font-bold px-3 py-1 rounded-lg ${netProfit >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}`}>
+                          <span className={`text-xs sm:text-sm font-bold px-3 py-1 rounded-lg ${netProfit >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}`}>
                             Net: {netProfit >= 0 ? `+${netProfit.toLocaleString()} TL` : `${netProfit.toLocaleString()} TL`}
                           </span>
                         </div>
@@ -2677,15 +1655,15 @@ const handleDeleteCompanyDoc = async (id) => {
                         <div className="grid grid-cols-3 gap-2 text-xs bg-slate-950 p-3 rounded-lg border border-slate-800/80 text-center">
                           <div>
                             <span className="text-slate-400 block text-[10px]">Aylık Gelir</span>
-                            <span className="text-emerald-400 font-bold text-sm">{fin.monthlyIncome.toLocaleString()} TL</span>
+                            <span className="text-emerald-400 font-bold text-xs sm:text-sm">{fin.monthlyIncome.toLocaleString()} TL</span>
                           </div>
                           <div>
                             <span className="text-slate-400 block text-[10px]">Bakım (Otomatik)</span>
-                            <span className="text-amber-400 font-bold text-sm">{maintenanceCost.toLocaleString()} TL</span>
+                            <span className="text-amber-400 font-bold text-xs sm:text-sm">{maintenanceCost.toLocaleString()} TL</span>
                           </div>
                           <div>
                             <span className="text-slate-400 block text-[10px]">Diğer Giderler</span>
-                            <span className="text-rose-400 font-bold text-sm">{(fin.insuranceCost + fin.otherExpenses).toLocaleString()} TL</span>
+                            <span className="text-rose-400 font-bold text-xs sm:text-sm">{(fin.insuranceCost + fin.otherExpenses).toLocaleString()} TL</span>
                           </div>
                         </div>
                       </div>
@@ -2697,7 +1675,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {activeTab === 'maintenance_history' && hasPermission('maintenance') && (
               <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
                       <Wrench className="text-amber-400" /> Filo Araçları Bakım & Servis Geçmişi
@@ -2714,8 +1692,8 @@ const handleDeleteCompanyDoc = async (id) => {
                   )}
                 </div>
 
-                <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-x-auto shadow-xl">
+                  <table className="w-full text-left text-sm min-w-[700px]">
                     <thead className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
                       <tr>
                         <th className="p-4">Plaka</th>
@@ -2767,12 +1745,12 @@ const handleDeleteCompanyDoc = async (id) => {
                       <ArrowLeft size={20} />
                     </button>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">GMG GRUP Filosuna Yeni Araç Ekle</h2>
+                      <h2 className="text-xl sm:text-2xl font-bold text-white">GMG GRUP Filosuna Yeni Araç Ekle</h2>
                       <p className="text-xs text-slate-400 mt-0.5">Aracın ruhsat, sigorta, finans ve zimmetli sürücü bilgilerini eksiksiz tanımlayın.</p>
                     </div>
                   </div>
                   <button onClick={() => setActiveTab('all')} className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg cursor-pointer">
-                    İptal Et / Geri Dön
+                    İptal Et
                   </button>
                 </div>
 
@@ -2879,7 +1857,7 @@ const handleDeleteCompanyDoc = async (id) => {
                             }} 
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white mt-1"
                           >
-                            <option value="">-- Sürücü Seçiniz (Zimmetsiz / Boş) --</option>
+                            <option value="">-- Sürücü Seçiniz --</option>
                             {uniqueDriversForSelect.map((drv, idx) => (
                               <option key={idx} value={drv.name}>
                                 {drv.name} ({drv.sourceLabel})
@@ -2889,11 +1867,11 @@ const handleDeleteCompanyDoc = async (id) => {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-slate-400 font-medium">Telefon (Otomatik)</label>
-                            <input type="text" readOnly value={fullNewVehicle.driverPhone} placeholder="Seçilen sürücü telefonu" className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-slate-300 mt-1 cursor-not-allowed" />
+                            <label className="text-slate-400 font-medium">Telefon</label>
+                            <input type="text" readOnly value={fullNewVehicle.driverPhone} placeholder="Telefon" className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-slate-300 mt-1 cursor-not-allowed" />
                           </div>
                           <div>
-                            <label className="text-slate-400 font-medium">Ehliyet Sınıfı (Otomatik)</label>
+                            <label className="text-slate-400 font-medium">Ehliyet Sınıfı</label>
                             <input type="text" readOnly value={fullNewVehicle.licenseClass} placeholder="B" className="w-full bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-slate-300 mt-1 cursor-not-allowed" />
                           </div>
                         </div>
@@ -2937,7 +1915,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {activeTab === 'drivers' && hasPermission('drivers') && (
               <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
                       <Users className="text-purple-400" /> Kayıtlı Sürücü Yönetimi & Evrak Sayfası
@@ -2994,7 +1972,7 @@ const handleDeleteCompanyDoc = async (id) => {
                         </div>
                       </div>
 
-{editingDriverKey === item.key ? (
+                      {editingDriverKey === item.key ? (
                         <div className="space-y-3 text-xs">
                           <div>
                             <label className="text-slate-400">Sürücü Adı Soyadı</label>
@@ -3049,8 +2027,8 @@ const handleDeleteCompanyDoc = async (id) => {
                           <div className="space-y-1">
                             {item.documents.map(doc => (
                               <div key={doc.id} className="flex justify-between items-center bg-slate-900 p-2 rounded text-xs border border-slate-800">
-                                <span className="truncate text-slate-300 text-[11px]">{doc.name}</span>
-                                <div className="flex items-center gap-2">
+                                <span className="truncate text-slate-300 text-[11px] pr-2">{doc.name}</span>
+                                <div className="flex items-center gap-2 shrink-0">
                                   <a href={doc.fileUrl} download={doc.name} className="text-blue-400 hover:underline text-[11px]">İndir</a>
                                   {hasActionPermission('delete') && (
                                     <button onClick={() => handleDeleteDriverDoc(item, doc.id)} className="text-rose-400 hover:text-rose-300 cursor-pointer" title="Evrakı Sil">
@@ -3147,7 +2125,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {activeTab === 'company_docs' && hasPermission('company_docs') && (
               <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
                       <Building2 className="text-indigo-400" /> Şirket & Kurumsal Sözleşmeler Kütüphanesi
@@ -3166,16 +2144,16 @@ const handleDeleteCompanyDoc = async (id) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {companyDocs.map(doc => (
-                    <div key={doc.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex justify-between items-center">
-                      <div className="flex items-center gap-3">
-                        <Building2 className="text-indigo-400" size={24} />
-                        <div>
-                          <h4 className="font-bold text-white text-sm">{doc.name}</h4>
-                          <p className="text-xs text-slate-400">{doc.category} • Firma: {doc.company}</p>
+                    <div key={doc.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex justify-between items-center gap-3">
+                      <div className="flex items-center gap-3 truncate">
+                        <Building2 className="text-indigo-400 shrink-0" size={24} />
+                        <div className="truncate">
+                          <h4 className="font-bold text-white text-sm truncate">{doc.name}</h4>
+                          <p className="text-xs text-slate-400 truncate">{doc.category} • Firma: {doc.company}</p>
                           <p className="text-[10px] text-slate-500 mt-0.5">Bitiş Tarihi: {doc.expiry}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <a href={doc.fileUrl || '#'} download={doc.name} className="bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/40 border border-indigo-500/30 px-3 py-1.5 rounded text-xs font-semibold">İndir</a>
                         {hasActionPermission('delete') && (
                           <button onClick={() => handleDeleteCompanyDoc(doc.id)} className="bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 p-1.5 rounded cursor-pointer" title="Evrakı Sil">
@@ -3219,15 +2197,15 @@ const handleDeleteCompanyDoc = async (id) => {
                       ) : (
                         <div className="space-y-2">
                           {v.documents.map(doc => (
-                            <div key={doc.id} className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 text-xs">
-                              <div className="flex items-center gap-2">
-                                <FileText className="text-rose-400" size={16} />
-                                <div>
-                                  <div className="font-medium text-white">{doc.name}</div>
+                            <div key={doc.id} className="flex justify-between items-center bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 text-xs gap-2">
+                              <div className="flex items-center gap-2 truncate">
+                                <FileText className="text-rose-400 shrink-0" size={16} />
+                                <div className="truncate">
+                                  <div className="font-medium text-white truncate">{doc.name}</div>
                                   <div className="text-[10px] text-slate-500">{doc.type} • Yüklenme: {doc.date}</div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <a href={doc.fileUrl} download={doc.name} className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 px-2.5 py-1 rounded flex items-center gap-1 text-[11px] border border-blue-500/30">
                                   <FolderDown size={13} /> İndir
                                 </a>
@@ -3249,57 +2227,57 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {(activeTab === 'all' || activeTab === 'rented' || activeTab === 'available' || activeTab === 'maintenance' || activeTab === 'kabis') && hasPermission('vehicles') && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                  <div className="bg-slate-900/80 border border-slate-800 p-3 sm:p-4 rounded-xl flex items-center justify-between">
                     <div>
-                      <p className="text-slate-400 text-xs font-semibold uppercase">Toplam Araç</p>
-                      <p className="text-2xl font-bold text-white mt-1">{realVehicles.length}</p>
+                      <p className="text-slate-400 text-[10px] sm:text-xs font-semibold uppercase">Toplam Araç</p>
+                      <p className="text-xl sm:text-2xl font-bold text-white mt-1">{realVehicles.length}</p>
                     </div>
-                    <Car className="text-blue-400" size={28} />
+                    <Car className="text-blue-400" size={24} />
                   </div>
-                  <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                  <div className="bg-slate-900/80 border border-slate-800 p-3 sm:p-4 rounded-xl flex items-center justify-between">
                     <div>
-                      <p className="text-slate-400 text-xs font-semibold uppercase">Kiradaki Araçlar</p>
-                      <p className="text-2xl font-bold text-emerald-400 mt-1">
+                      <p className="text-slate-400 text-[10px] sm:text-xs font-semibold uppercase">Kiradaki Araçlar</p>
+                      <p className="text-xl sm:text-2xl font-bold text-emerald-400 mt-1">
                         {realVehicles.filter(v => v.status === 'Rented').length}
                       </p>
                     </div>
-                    <Key className="text-emerald-400" size={28} />
+                    <Key className="text-emerald-400" size={24} />
                   </div>
-                  <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                  <div className="bg-slate-900/80 border border-slate-800 p-3 sm:p-4 rounded-xl flex items-center justify-between">
                     <div>
-                      <p className="text-slate-400 text-xs font-semibold uppercase">KABİS Bildirimleri</p>
-                      <p className="text-2xl font-bold text-indigo-400 mt-1">
+                      <p className="text-slate-400 text-[10px] sm:text-xs font-semibold uppercase">KABİS Bildirimleri</p>
+                      <p className="text-xl sm:text-2xl font-bold text-indigo-400 mt-1">
                         {realVehicles.filter(v => v.kabisStatus === 'Registered').length} Aktif
                       </p>
                     </div>
-                    <ShieldCheck className="text-indigo-400" size={28} />
+                    <ShieldCheck className="text-indigo-400" size={24} />
                   </div>
                   <div 
                     onClick={() => setActiveTab('notifications')}
-                    className="bg-slate-900/80 border border-slate-800 hover:border-rose-500/50 p-4 rounded-xl flex items-center justify-between cursor-pointer transition shadow"
+                    className="bg-slate-900/80 border border-slate-800 hover:border-rose-500/50 p-3 sm:p-4 rounded-xl flex items-center justify-between cursor-pointer transition shadow"
                   >
                     <div>
-                      <p className="text-slate-400 text-xs font-semibold uppercase">Kritik Bildirimler</p>
-                      <p className="text-2xl font-bold text-rose-400 mt-1">
+                      <p className="text-slate-400 text-[10px] sm:text-xs font-semibold uppercase">Kritik Bildirimler</p>
+                      <p className="text-xl sm:text-2xl font-bold text-rose-400 mt-1">
                         {notificationList.length}
                       </p>
                     </div>
-                    <Bell className="text-rose-400 animate-bounce" size={28} />
+                    <Bell className="text-rose-400 animate-bounce" size={24} />
                   </div>
                 </div>
 
-                <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-x-auto shadow-xl">
+                  <table className="w-full text-left text-xs sm:text-sm min-w-[700px]">
                     <thead className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
                       <tr>
-                        <th className="p-4">Plaka / Araç</th>
-                        <th className="p-4">Durum</th>
-                        <th className="p-4">KABİS Durumu</th>
-                        <th className="p-4">KM & Bakım</th>
-                        <th className="p-4">Muayene / Sigorta</th>
-                        <th className="p-4">Sürücü (Zimmet)</th>
-                        <th className="p-4 text-right">İşlem</th>
+                        <th className="p-3 sm:p-4">Plaka / Araç</th>
+                        <th className="p-3 sm:p-4">Durum</th>
+                        <th className="p-3 sm:p-4">KABİS Durumu</th>
+                        <th className="p-3 sm:p-4">KM & Bakım</th>
+                        <th className="p-3 sm:p-4">Muayene / Sigorta</th>
+                        <th className="p-3 sm:p-4">Sürücü (Zimmet)</th>
+                        <th className="p-3 sm:p-4 text-right">İşlem</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
@@ -3307,12 +2285,12 @@ const handleDeleteCompanyDoc = async (id) => {
                         const kmDiff = vehicle.nextMaintenanceKm - vehicle.currentKm;
                         return (
                           <tr key={vehicle.id} onClick={() => handleOpenDetailModal(vehicle)} className="hover:bg-slate-800/40 transition cursor-pointer">
-                            <td className="p-4">
-                              <div className="font-bold text-white text-base">{vehicle.plate}</div>
-                              <div className="text-slate-400 text-xs">{vehicle.brand} {vehicle.model} ({vehicle.year})</div>
+                            <td className="p-3 sm:p-4">
+                              <div className="font-bold text-white text-sm sm:text-base">{vehicle.plate}</div>
+                              <div className="text-slate-400 text-[11px] sm:text-xs">{vehicle.brand} {vehicle.model} ({vehicle.year})</div>
                             </td>
-                            <td className="p-4">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            <td className="p-3 sm:p-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
                                 vehicle.status === 'Rented' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                                 vehicle.status === 'Available' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
                                 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
@@ -3320,42 +2298,36 @@ const handleDeleteCompanyDoc = async (id) => {
                                 {vehicle.status === 'Rented' ? 'Kirada' : vehicle.status === 'Available' ? 'Garajda / Boşta' : 'Bakımda'}
                               </span>
                             </td>
-                            <td className="p-4">
+                            <td className="p-3 sm:p-4">
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleInitiateKabisToggle(vehicle); }}
-                                className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 cursor-pointer transition ${
+                                className={`px-2.5 py-1 rounded text-[10px] sm:text-xs font-medium flex items-center gap-1 cursor-pointer transition ${
                                   vehicle.kabisStatus === 'Registered' 
                                     ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40' 
                                     : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                                 }`}
                               >
-                                <ShieldCheck size={13} /> {vehicle.kabisStatus === 'Registered' ? 'E-Emniyet Bildirildi' : 'Bildirilmedi (Bekliyor)'}
+                                <ShieldCheck size={13} /> {vehicle.kabisStatus === 'Registered' ? 'Bildirildi' : 'Bekliyor'}
                               </button>
                             </td>
-                            <td className="p-4">
-                              <div className="text-white">{vehicle.currentKm.toLocaleString()} KM</div>
-                              <div className={`text-xs ${kmDiff <= 1000 ? 'text-amber-400 font-bold' : 'text-slate-400'}`}>
-                                Bakıma: {kmDiff.toLocaleString()} KM (Sonraki: {vehicle.nextMaintenanceKm.toLocaleString()})
+                            <td className="p-3 sm:p-4">
+                              <div className="text-white text-xs">{vehicle.currentKm.toLocaleString()} KM</div>
+                              <div className={`text-[10px] sm:text-xs ${kmDiff <= 1000 ? 'text-amber-400 font-bold' : 'text-slate-400'}`}>
+                                Bakıma: {kmDiff.toLocaleString()} KM
                               </div>
                             </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-1 text-slate-300 text-xs">
-                                <Calendar size={13} className="text-blue-400" /> Muayene: {vehicle.inspectionDate}
-                              </div>
-                              <div className="flex items-center gap-1 text-slate-300 text-xs mt-1">
-                                <FileText size={13} className="text-emerald-400" /> Sigorta: {vehicle.insuranceDate}
-                              </div>
+                            <td className="p-3 sm:p-4 text-xs text-slate-300">
+                              <div className="flex items-center gap-1">Muayene: {vehicle.inspectionDate}</div>
+                              <div className="flex items-center gap-1 mt-0.5">Sigorta: {vehicle.insuranceDate}</div>
                             </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-1.5 text-slate-200">
-                                <UserCheck size={14} className="text-slate-400" /> {vehicle.driver.name}
-                              </div>
-                              <div className="text-slate-500 text-xs">{vehicle.driver.phone}</div>
+                            <td className="p-3 sm:p-4 text-xs text-slate-200">
+                              <div className="font-medium">{vehicle.driver.name}</div>
+                              <div className="text-slate-500 text-[10px]">{vehicle.driver.phone}</div>
                             </td>
-                            <td className="p-4 text-right">
+                            <td className="p-3 sm:p-4 text-right">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); handleOpenDetailModal(vehicle); }}
-                                className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-lg transition cursor-pointer"
+                                className="bg-slate-800 hover:bg-slate-700 text-white p-1.5 sm:p-2 rounded-lg transition cursor-pointer"
                               >
                                 <ChevronRight size={16} />
                               </button>
@@ -3387,28 +2359,28 @@ const handleDeleteCompanyDoc = async (id) => {
         ];
 
         return (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80]">
-            <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl p-6 space-y-6 shadow-2xl">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[80]">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl p-4 sm:p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center pb-3 border-b border-slate-800">
                 <div>
-                  <h3 className="text-lg font-bold text-white font-mono">{chartModalVehicle.plate} - Gelir / Gider Dengesi</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-white font-mono">{chartModalVehicle.plate} - Gelir / Gider Dengesi</h3>
                   <p className="text-xs text-slate-400">{chartModalVehicle.brand} {chartModalVehicle.model} için Araç Bazlı Çubuk Grafik Analizi</p>
                 </div>
                 <button onClick={() => setChartModalVehicle(null)} className="text-slate-400 hover:text-white cursor-pointer"><X size={20} /></button>
               </div>
 
-              <div className="bg-white p-5 rounded-xl text-slate-900 space-y-4 shadow-inner">
+              <div className="bg-white p-4 sm:p-5 rounded-xl text-slate-900 space-y-4 shadow-inner">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-sm flex items-center gap-1.5 text-slate-800">
+                  <span className="font-bold text-xs sm:text-sm flex items-center gap-1.5 text-slate-800">
                     <BarChart3 size={16} className="text-emerald-600" /> Gelir / Gider Dengesi
                   </span>
-                  <div className="flex items-center gap-4 text-xs font-semibold">
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-emerald-500 rounded-sm inline-block"></span> GELİR</span>
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-rose-500 rounded-sm inline-block"></span> GİDER</span>
+                  <div className="flex items-center gap-3 text-[10px] sm:text-xs font-semibold">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-sm inline-block"></span> GELİR</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-rose-500 rounded-sm inline-block"></span> GİDER</span>
                   </div>
                 </div>
 
-                <div className="relative h-48 border-b border-slate-200 flex items-end justify-around px-2 pt-6 pb-2">
+                <div className="relative h-44 sm:h-48 border-b border-slate-200 flex items-end justify-around px-2 pt-6 pb-2">
                   <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
                     <div className="border-b border-slate-400 w-full text-[10px] text-right pr-1">40k</div>
                     <div className="border-b border-slate-400 w-full text-[10px] text-right pr-1">30k</div>
@@ -3423,25 +2395,17 @@ const handleDeleteCompanyDoc = async (id) => {
                     const expHeight = Math.min(Math.round((col.expense / maxScale) * 100), 100);
 
                     return (
-                      <div key={idx} className="flex flex-col items-center flex-1 z-10 h-full justify-end px-2">
-                        <div className="flex items-end gap-2 h-36 w-full justify-center">
+                      <div key={idx} className="flex flex-col items-center flex-1 z-10 h-full justify-end px-1 sm:px-2">
+                        <div className="flex items-end gap-1.5 sm:gap-2 h-32 sm:h-36 w-full justify-center">
                           {col.income > 0 ? (
-                            <div 
-                              style={{ height: `${Math.max(incHeight, 10)}%` }} 
-                              className="w-6 bg-emerald-500 rounded-t transition-all relative group/tip"
-                              title={`Gelir: ${col.income.toLocaleString()} TL`}
-                            ></div>
-                          ) : <div className="w-6"></div>}
+                            <div style={{ height: `${Math.max(incHeight, 10)}%` }} className="w-4 sm:w-6 bg-emerald-500 rounded-t transition-all"></div>
+                          ) : <div className="w-4 sm:w-6"></div>}
 
                           {col.expense > 0 ? (
-                            <div 
-                              style={{ height: `${Math.max(expHeight, 10)}%` }} 
-                              className="w-6 bg-rose-500 rounded-t transition-all relative group/tip"
-                              title={`Gider: ${col.expense.toLocaleString()} TL`}
-                            ></div>
-                          ) : <div className="w-6"></div>}
+                            <div style={{ height: `${Math.max(expHeight, 10)}%` }} className="w-4 sm:w-6 bg-rose-500 rounded-t transition-all"></div>
+                          ) : <div className="w-4 sm:w-6"></div>}
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-700 mt-2 text-center">{col.label}</span>
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-slate-700 mt-2 text-center truncate w-full">{col.label}</span>
                       </div>
                     );
                   })}
@@ -3451,15 +2415,15 @@ const handleDeleteCompanyDoc = async (id) => {
               <div className="grid grid-cols-3 gap-2 text-xs bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
                 <div>
                   <span className="text-slate-400 block text-[10px]">Aylık Gelir</span>
-                  <span className="text-emerald-400 font-bold text-sm">{fin.monthlyIncome.toLocaleString()} TL</span>
+                  <span className="text-emerald-400 font-bold text-xs sm:text-sm">{fin.monthlyIncome.toLocaleString()} TL</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">Toplam Gider</span>
-                  <span className="text-rose-400 font-bold text-sm">{totalExpense.toLocaleString()} TL</span>
+                  <span className="text-rose-400 font-bold text-xs sm:text-sm">{totalExpense.toLocaleString()} TL</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">Net Kar/Zarar</span>
-                  <span className={`font-bold text-sm ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <span className={`font-bold text-xs sm:text-sm ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {netProfit >= 0 ? `+${netProfit.toLocaleString()} TL` : `${netProfit.toLocaleString()} TL`}
                   </span>
                 </div>
@@ -3479,10 +2443,10 @@ const handleDeleteCompanyDoc = async (id) => {
       })()}
 
       {showAddUserModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-[90]">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[90]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 sm:p-6 space-y-4">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2"><Shield className="text-purple-400" size={18} /> Yeni Personel / Kullanıcı Ekle</h3>
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2"><Shield className="text-purple-400" size={18} /> Yeni Personel / Kullanıcı Ekle</h3>
               <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveNewUser} className="space-y-3">
@@ -3508,10 +2472,10 @@ const handleDeleteCompanyDoc = async (id) => {
       )}
 
       {showAddMaintenanceModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <Wrench className="text-amber-400" size={18} />
                 Yeni Bakım / Servis Kaydı Ekle
               </h3>
@@ -3528,7 +2492,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400">Bakım Tarihi</label>
                   <input required type="date" value={newMaintenanceForm.date} onChange={e => setNewMaintenanceForm({...newMaintenanceForm, date: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
@@ -3539,10 +2503,10 @@ const handleDeleteCompanyDoc = async (id) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400">Bakım Türü</label>
-                  <input required type="text" placeholder="Periyodik / Balata / Akü" value={newMaintenanceForm.type} onChange={e => setNewMaintenanceForm({...newMaintenanceForm, type: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                  <input required type="text" placeholder="Periyodik / Balata" value={newMaintenanceForm.type} onChange={e => setNewMaintenanceForm({...newMaintenanceForm, type: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400">Toplam Maliyet (TL)</label>
@@ -3552,17 +2516,17 @@ const handleDeleteCompanyDoc = async (id) => {
 
               <div>
                 <label className="text-xs text-slate-400">Servis / Tamirhane Adı</label>
-                <input type="text" placeholder="Renault Yetkili Servis" value={newMaintenanceForm.service} onChange={e => setNewMaintenanceForm({...newMaintenanceForm, service: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                <input type="text" placeholder="Yetkili Servis" value={newMaintenanceForm.service} onChange={e => setNewMaintenanceForm({...newMaintenanceForm, service: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
 
               <div>
                 <label className="text-xs text-slate-400">Yapılan İşlem / Notlar</label>
-                <textarea rows="2" placeholder="Yağ ve filtre değişimi yapıldı." value={newMaintenanceForm.note} onChange={e => setNewMaintenanceForm({...newMaintenanceForm, note: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1 resize-none"></textarea>
+                <textarea rows="2" placeholder="Notlar..." value={newMaintenanceForm.note} onChange={e => setNewMaintenanceForm({...newMaintenanceForm, note: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1 resize-none"></textarea>
               </div>
 
               <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
                 <button type="button" onClick={() => setShowAddMaintenanceModal(false)} className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs cursor-pointer">İptal</button>
-                <button type="submit" className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-semibold cursor-pointer">Bakım Kaydını Kaydet</button>
+                <button type="submit" className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-semibold cursor-pointer">Kaydet</button>
               </div>
             </form>
           </div>
@@ -3570,11 +2534,11 @@ const handleDeleteCompanyDoc = async (id) => {
       )}
 
       {kabisConfirmModal.show && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md p-5 sm:p-6 space-y-4 shadow-2xl">
             <div className="flex items-center gap-3 text-amber-400">
               <AlertCircle size={28} />
-              <h3 className="text-lg font-bold text-white">KABİS Durum Değişikliği Onayı</h3>
+              <h3 className="text-base sm:text-lg font-bold text-white">KABİS Durum Değişikliği Onayı</h3>
             </div>
             
             <p className="text-slate-300 text-xs leading-relaxed">
@@ -3594,7 +2558,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 onClick={handleConfirmKabisChange}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-indigo-600/30 cursor-pointer"
               >
-                Evet, Durumu Güncelle
+                Evet, Güncelle
               </button>
             </div>
           </div>
@@ -3602,13 +2566,13 @@ const handleDeleteCompanyDoc = async (id) => {
       )}
 
       {selectedVehicle && editForm && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-4xl p-6 space-y-5 max-h-[90vh] overflow-y-auto no-scrollbar">
-            <div className="flex justify-between items-start pb-4 border-b border-slate-800">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-4xl p-4 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div className="flex justify-between items-start pb-4 border-b border-slate-800 gap-2">
               <div>
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xl font-bold text-white">{selectedVehicle.plate}</h2>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <h2 className="text-lg sm:text-xl font-bold text-white">{selectedVehicle.plate}</h2>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${
                     selectedVehicle.status === 'Rented' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
                     selectedVehicle.status === 'Available' ? 'bg-blue-500/10 text-blue-400' : 'bg-amber-500/10 text-amber-400'
                   }`}>
@@ -3617,70 +2581,52 @@ const handleDeleteCompanyDoc = async (id) => {
                 </div>
                 <p className="text-xs text-slate-400 mt-1">{selectedVehicle.brand} {selectedVehicle.model} ({selectedVehicle.year}) - Kontrol & Detay Kartı</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 justify-end">
                 {!isEditingModal ? (
                   hasActionPermission('edit') && (
-                    <button 
-                      onClick={() => setIsEditingModal(true)} 
-                      className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Edit3 size={14} /> Bilgileri Düzenle
+                    <button onClick={() => setIsEditingModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer">
+                      <Edit3 size={14} /> Düzenle
                     </button>
                   )
                 ) : (
                   hasActionPermission('edit') && (
-                    <button 
-                      onClick={handleSaveVehicleEdit} 
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer font-semibold"
-                    >
+                    <button onClick={handleSaveVehicleEdit} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer font-semibold">
                       <Save size={14} /> Kaydet
                     </button>
                   )
                 )}
                 {hasActionPermission('delete') && (
                   <button onClick={() => handleDeleteVehicle(selectedVehicle.id)} className="bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 border border-rose-500/30 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer">
-                    <Trash2 size={14} /> Aracı Sil
+                    <Trash2 size={14} /> Sil
                   </button>
                 )}
-                <button onClick={() => setSelectedVehicle(null)} className="text-slate-400 hover:text-white cursor-pointer ml-2">
+                <button onClick={() => setSelectedVehicle(null)} className="text-slate-400 hover:text-white cursor-pointer ml-1">
                   <X size={20} />
                 </button>
               </div>
             </div>
 
-            <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
+            <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <span className="text-xs text-slate-400">Araç Hızlı Durum / Transfer İşlemleri:</span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {selectedVehicle.status === 'Available' && hasActionPermission('edit') && (
                   <>
-                    <button 
-                      onClick={() => handleSetMaintenanceStatus(selectedVehicle.id)} 
-                      className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Wrench size={14} /> Doğrudan Bakıma Al
+                    <button onClick={() => handleSetMaintenanceStatus(selectedVehicle.id)} className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                      <Wrench size={14} /> Bakıma Al
                     </button>
-                    <button 
-                      onClick={() => setShowRentModal(true)} 
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                    >
+                    <button onClick={() => setShowRentModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
                       <ArrowRightLeft size={14} /> Kiraya Çek
                     </button>
                   </>
                 )}
                 {selectedVehicle.status === 'Rented' && hasActionPermission('edit') && (
-                  <button 
-                    onClick={() => handleReturnToGarage(selectedVehicle.id)} 
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <ArrowRightLeft size={14} /> Garaja Çek (Kirayı Bitir)
+                  <button onClick={() => handleReturnToGarage(selectedVehicle.id)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                    <ArrowRightLeft size={14} /> Garaja Çek (Bitir)
                   </button>
                 )}
                 {selectedVehicle.status === 'Maintenance' && hasActionPermission('edit') && (
-                  <button 
-                    onClick={() => handleReturnToGarage(selectedVehicle.id)} 
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Wrench size={14} /> Bakımdan Çek (Garaja / Boşa Al)
+                  <button onClick={() => handleReturnToGarage(selectedVehicle.id)} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                    <Wrench size={14} /> Bakımdan Çek
                   </button>
                 )}
               </div>
@@ -3691,7 +2637,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 <Car size={15} /> 1. Temel Ruhsat, Durum & Kilometre Bilgileri
               </h3>
               {isEditingModal ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                   <div>
                     <label className="text-slate-400">Plaka</label>
                     <input type="text" value={editForm.plate} onChange={e => setEditForm({...editForm, plate: e.target.value})} className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-white mt-1 font-mono font-bold" />
@@ -3740,12 +2686,12 @@ const handleDeleteCompanyDoc = async (id) => {
                   <p className="text-xs text-slate-500 italic py-1">Bu araç için kayıtlı bakım geçmişi bulunmuyor.</p>
                 ) : (
                   maintenanceRecords.filter(r => r.vehicleId === selectedVehicle.id).map(rec => (
-                    <div key={rec.id} className="bg-slate-900 p-2 rounded border border-slate-800 flex justify-between items-center text-xs">
-                      <div>
+                    <div key={rec.id} className="bg-slate-900 p-2 rounded border border-slate-800 flex justify-between items-center text-xs gap-2">
+                      <div className="truncate">
                         <span className="font-bold text-amber-300">{rec.type}</span> <span className="text-slate-400">• {rec.date} • {rec.km?.toLocaleString()} KM</span>
-                        <div className="text-slate-300 mt-0.5">{rec.service} - <span className="text-slate-400">{rec.note}</span></div>
+                        <div className="text-slate-300 mt-0.5 truncate">{rec.service} - <span className="text-slate-400">{rec.note}</span></div>
                       </div>
-                      <span className="font-bold text-rose-400">{rec.cost?.toLocaleString()} TL</span>
+                      <span className="font-bold text-rose-400 shrink-0">{rec.cost?.toLocaleString()} TL</span>
                     </div>
                   ))
                 )}
@@ -3757,7 +2703,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 <Calendar size={15} /> 2. Muayene & Sigorta Poliçe Bilgileri
               </h3>
               {isEditingModal ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                   <div>
                     <label className="text-slate-400">Muayene Bitiş Tarihi</label>
                     <input type="date" value={editForm.inspectionDate} onChange={e => setEditForm({...editForm, inspectionDate: e.target.value})} className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-white mt-1" />
@@ -3793,7 +2739,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 <DollarSign size={15} /> 3. Finansal Gelir & Gider Kalemleri (Aylık)
               </h3>
               {isEditingModal ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div>
                     <label className="text-slate-400">Aylık Kira Geliri (TL)</label>
                     <input type="number" value={editForm.financials?.monthlyIncome || 0} onChange={e => setEditForm({...editForm, financials: {...editForm.financials, monthlyIncome: Number(e.target.value)}})} className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-white mt-1" />
@@ -3821,7 +2767,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 <UserCheck size={15} /> 4. Zimmetli Sürücü Bilgileri
               </h3>
               {isEditingModal ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div>
                     <label className="text-slate-400">Sürücü Seçin</label>
                     <select 
@@ -3829,44 +2775,26 @@ const handleDeleteCompanyDoc = async (id) => {
                       onChange={e => {
                         const selectedName = e.target.value;
                         if (!selectedName || selectedName === 'Zimmetsiz') {
-                          setEditForm({
-                            ...editForm, 
-                            driver: { 
-                              ...editForm.driver, 
-                              name: 'Zimmetsiz', 
-                              phone: '-', 
-                              licenseClass: '-' 
-                            }
-                          });
+                          setEditForm({ ...editForm, driver: { ...editForm.driver, name: 'Zimmetsiz', phone: '-', licenseClass: '-' } });
                         } else {
                           const matchedDrv = uniqueDriversForSelect.find(d => d.name === selectedName);
-                          setEditForm({
-                            ...editForm,
-                            driver: {
-                              ...editForm.driver,
-                              name: selectedName,
-                              phone: matchedDrv ? matchedDrv.phone : '-',
-                              licenseClass: matchedDrv ? (matchedDrv.licenseClass || 'B') : 'B'
-                            }
-                          });
+                          setEditForm({ ...editForm, driver: { ...editForm.driver, name: selectedName, phone: matchedDrv ? matchedDrv.phone : '-', licenseClass: matchedDrv ? (matchedDrv.licenseClass || 'B') : 'B' } });
                         }
                       }} 
                       className="w-full bg-slate-900 border border-slate-800 rounded p-1.5 text-white mt-1"
                     >
-                      <option value="Zimmetsiz">Zimmetsiz (Sürücüsüz)</option>
+                      <option value="Zimmetsiz">Zimmetsiz</option>
                       {uniqueDriversForSelect.map((drv, idx) => (
-                        <option key={idx} value={drv.name}>
-                          {drv.name} ({drv.sourceLabel})
-                        </option>
+                        <option key={idx} value={drv.name}>{drv.name} ({drv.sourceLabel})</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="text-slate-400">Telefon (Otomatik)</label>
+                    <label className="text-slate-400">Telefon</label>
                     <input type="text" readOnly value={editForm.driver.phone} className="w-full bg-slate-900/60 border border-slate-800 rounded p-1.5 text-slate-300 mt-1 cursor-not-allowed" />
                   </div>
                   <div>
-                    <label className="text-slate-400">Ehliyet Sınıfı (Otomatik)</label>
+                    <label className="text-slate-400">Ehliyet Sınıfı</label>
                     <input type="text" readOnly value={editForm.driver.licenseClass} className="w-full bg-slate-900/60 border border-slate-800 rounded p-1.5 text-slate-300 mt-1 cursor-not-allowed" />
                   </div>
                 </div>
@@ -3882,7 +2810,7 @@ const handleDeleteCompanyDoc = async (id) => {
             <div className="flex justify-end pt-3 border-t border-slate-800 gap-2">
               {isEditingModal && hasActionPermission('edit') && (
                 <button onClick={handleSaveVehicleEdit} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold cursor-pointer">
-                  Değişiklikleri Kaydet
+                  Kaydet
                 </button>
               )}
               <button onClick={() => setSelectedVehicle(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm cursor-pointer">
@@ -3894,10 +2822,10 @@ const handleDeleteCompanyDoc = async (id) => {
       )}
 
       {showAddDriverModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[60]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <Users className="text-purple-400" size={18} />
                 Yeni Sürücü Ekle & Araç Ata
               </h3>
@@ -3908,7 +2836,7 @@ const handleDeleteCompanyDoc = async (id) => {
               <div>
                 <label className="text-xs text-slate-400">Zimmetlenecek Araç (Plaka)</label>
                 <select value={newDriverForm.targetVehicleId} onChange={e => setNewDriverForm({...newDriverForm, targetVehicleId: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1">
-                  <option value="">-- Araç Seçilmesin (Zimmetsiz / Bağımsız Sürücü) --</option>
+                  <option value="">-- Bağımsız Sürücü --</option>
                   {realVehicles.map(v => (
                     <option key={v.id} value={v.id}>{v.plate} ({v.brand} {v.model})</option>
                   ))}
@@ -3920,10 +2848,10 @@ const handleDeleteCompanyDoc = async (id) => {
                 <input required type="text" placeholder="Ahmet Yılmaz" value={newDriverForm.name} onChange={e => setNewDriverForm({...newDriverForm, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400">Telefon</label>
-                  <input required type="text" placeholder="0532 111 2233" value={newDriverForm.phone} onChange={e => setNewDriverForm({...newDriverForm, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                  <input required type="text" placeholder="0532..." value={newDriverForm.phone} onChange={e => setNewDriverForm({...newDriverForm, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
                 </div>
                 <div>
                   <label className="text-xs text-slate-400">Ehliyet Sınıfı</label>
@@ -3931,7 +2859,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400">SRC Belge Türü</label>
                   <input type="text" placeholder="SRC-2" value={newDriverForm.srcType} onChange={e => setNewDriverForm({...newDriverForm, srcType: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
@@ -3944,7 +2872,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
               <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
                 <button type="button" onClick={() => setShowAddDriverModal(false)} className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs cursor-pointer">İptal</button>
-                <button type="submit" className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-semibold cursor-pointer">Sürücüyü Kaydet</button>
+                <button type="submit" className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-semibold cursor-pointer">Kaydet</button>
               </div>
             </form>
           </div>
@@ -3952,10 +2880,10 @@ const handleDeleteCompanyDoc = async (id) => {
       )}
 
       {showRentModal && selectedVehicle && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[60]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <Key className="text-emerald-400" size={18} />
                 {selectedVehicle.plate} - Kiraya Çek
               </h3>
@@ -3965,15 +2893,15 @@ const handleDeleteCompanyDoc = async (id) => {
             <form onSubmit={handleRentVehicle} className="space-y-3 my-3">
               <div>
                 <label className="text-xs text-slate-400">Müşteri / Firma Adı</label>
-                <input required type="text" placeholder="AWP Grupp" value={rentForm.customer} onChange={e => setRentForm({...rentForm, customer: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                <input required type="text" placeholder="Firma Adı" value={rentForm.customer} onChange={e => setRentForm({...rentForm, customer: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400">Aylık Ücret (TL)</label>
-                  <input required type="number" placeholder="100555" value={rentForm.monthlyFee} onChange={e => setRentForm({...rentForm, monthlyFee: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                  <input required type="number" placeholder="Tutar" value={rentForm.monthlyFee} onChange={e => setRentForm({...rentForm, monthlyFee: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400">Sözleşme Bitiş Tarihi</label>
+                  <label className="text-xs text-slate-400">Sözleşme Bitiş</label>
                   <input required type="date" value={rentForm.endDate} onChange={e => setRentForm({...rentForm, endDate: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
                 </div>
               </div>
@@ -3989,30 +2917,24 @@ const handleDeleteCompanyDoc = async (id) => {
                       onChange={e => {
                         const selectedName = e.target.value;
                         const matchedDrv = uniqueDriversForSelect.find(d => d.name === selectedName);
-                        setRentForm({
-                          ...rentForm,
-                          driverName: selectedName,
-                          driverPhone: matchedDrv ? matchedDrv.phone : ''
-                        });
+                        setRentForm({ ...rentForm, driverName: selectedName, driverPhone: matchedDrv ? matchedDrv.phone : '' });
                       }}
                       className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1"
                     >
                       <option value="">-- Sürücü Seçiniz --</option>
                       {uniqueDriversForSelect.map((drv, idx) => (
-                        <option key={idx} value={drv.name}>
-                          {drv.name} ({drv.sourceLabel})
-                        </option>
+                        <option key={idx} value={drv.name}>{drv.name} ({drv.sourceLabel})</option>
                       ))}
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-slate-400">Telefon (Otomatik)</label>
-                      <input required type="text" readOnly placeholder="66688999" value={rentForm.driverPhone} className="w-full bg-slate-950/60 border border-slate-800 rounded p-2 text-xs text-slate-300 mt-1 cursor-not-allowed" />
+                      <label className="text-xs text-slate-400">Telefon</label>
+                      <input required type="text" readOnly placeholder="Telefon" value={rentForm.driverPhone} className="w-full bg-slate-950/60 border border-slate-800 rounded p-2 text-xs text-slate-300 mt-1 cursor-not-allowed" />
                     </div>
                     <div>
                       <label className="text-xs text-slate-400">TC Kimlik No (KABİS)</label>
-                      <input required type="text" placeholder="2255889966" value={rentForm.tcNo} onChange={e => setRentForm({...rentForm, tcNo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                      <input required type="text" placeholder="TC No" value={rentForm.tcNo} onChange={e => setRentForm({...rentForm, tcNo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
                     </div>
                   </div>
                 </div>
@@ -4028,39 +2950,34 @@ const handleDeleteCompanyDoc = async (id) => {
       )}
 
       {showCompanyDocModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[60]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <Building2 className="text-indigo-400" size={18} />
                 Yeni Şirket Evrakı Ekle
               </h3>
               <button onClick={() => setShowCompanyDocModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
             </div>
 
-<form onSubmit={handleSaveCompanyDoc} className="space-y-3 my-3">
+            <form onSubmit={handleSaveCompanyDoc} className="space-y-3 my-3">
               <div>
                 <label className="text-xs text-slate-400">Evrak / Dosya Adı</label>
-                <input required type="text" placeholder="Ornek_Sozlesme_2026.pdf" value={companyDocForm.name} onChange={e => setCompanyDocForm({...companyDocForm, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                <input required type="text" placeholder="Sozlesme.pdf" value={companyDocForm.name} onChange={e => setCompanyDocForm({...companyDocForm, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
               
-              {/* PDF SEÇME ALANI */}
               <div>
                 <label className="text-xs text-slate-400 block mb-1">PDF Dosyası Seç</label>
                 <label className="w-full bg-slate-950 hover:bg-slate-800 border border-dashed border-slate-700 rounded p-3 flex items-center justify-center gap-2 cursor-pointer text-xs text-cyan-400 transition">
                   <Upload size={16} />
-                  <span>{companyDocForm.file ? `Seçilen: ${companyDocForm.file.name}` : 'Bilgisayardan PDF Seç'}</span>
+                  <span className="truncate">{companyDocForm.file ? `Seçilen: ${companyDocForm.file.name}` : 'Bilgisayardan PDF Seç'}</span>
                   <input 
                     type="file" 
                     accept=".pdf" 
                     onChange={e => {
                       const file = e.target.files[0];
                       if (file) {
-                        setCompanyDocForm({
-                          ...companyDocForm, 
-                          file: file,
-                          name: companyDocForm.name || file.name // İsim boşsa dosya adını otomatik yazar
-                        });
+                        setCompanyDocForm({ ...companyDocForm, file: file, name: companyDocForm.name || file.name });
                       }
                     }} 
                     className="hidden" 
@@ -4068,10 +2985,9 @@ const handleDeleteCompanyDoc = async (id) => {
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400">Kategori</label>
-                  {/* BURASI DÜZELTİLDİ: Artık doğru şekilde category güncelleniyor */}
                   <select value={companyDocForm.category} onChange={e => setCompanyDocForm({...companyDocForm, category: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1">
                     <option value="Uzun Vadeli Şirket Sözleşmesi">Uzun Vadeli Sözleşme</option>
                     <option value="Vergi & Resmi Evrak">Vergi & Resmi Evrak</option>
@@ -4079,19 +2995,19 @@ const handleDeleteCompanyDoc = async (id) => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400">İlgili Firma / Kurum</label>
-                  <input required type="text" placeholder="ABC Lojistik A.Ş." value={companyDocForm.company} onChange={e => setCompanyDocForm({...companyDocForm, company: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                  <label className="text-xs text-slate-400">İlgili Firma</label>
+                  <input required type="text" placeholder="Firma Adı" value={companyDocForm.company} onChange={e => setCompanyDocForm({...companyDocForm, company: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs text-slate-400">Bitiş / Geçerlilik Tarihi</label>
+                <label className="text-xs text-slate-400">Bitiş Tarihi</label>
                 <input required type="date" value={companyDocForm.expiry} onChange={e => setCompanyDocForm({...companyDocForm, expiry: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
 
               <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
                 <button type="button" onClick={() => setShowCompanyDocModal(false)} className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs cursor-pointer">İptal</button>
-                <button type="submit" className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold cursor-pointer">Evrakı Kaydet</button>
+                <button type="submit" className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold cursor-pointer">Kaydet</button>
               </div>
             </form>
           </div>
@@ -4099,27 +3015,27 @@ const handleDeleteCompanyDoc = async (id) => {
       )}
 
       {showTireModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <HardDrive className="text-emerald-400" size={18} />
-                {editingTireId ? 'Lastik Bilgilerini Düzenle' : 'Araca Yeni Lastik Ekle'}
+                {editingTireId ? 'Lastik Düzenle' : 'Yeni Lastik Ekle'}
               </h3>
-              <button onClick={() => setShowTireModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size= {18} /></button>
+              <button onClick={() => setShowTireModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleSaveTire} className="space-y-3 my-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-slate-400">Takılı/Depo Konumu</label>
+                  <label className="text-xs text-slate-400">Konum</label>
                   <select value={tireForm.position} onChange={e => setTireForm({...tireForm, position: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1">
                     <option value="Üzerinde Takılı">Üzerinde Takılı</option>
                     <option value="Yedek Depo">Yedek Depo</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400">Lastik Tipi</label>
+                  <label className="text-xs text-slate-400">Tip</label>
                   <select value={tireForm.type} onChange={e => setTireForm({...tireForm, type: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1">
                     <option value="Yazlık">Yazlık</option>
                     <option value="Kışlık">Kışlık</option>
@@ -4133,7 +3049,7 @@ const handleDeleteCompanyDoc = async (id) => {
                 <input required type="text" placeholder="Michelin 205/55 R16" value={tireForm.brand} onChange={e => setTireForm({...tireForm, brand: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400">Seri / DOT No</label>
                   <input type="text" placeholder="DOT-2026" value={tireForm.serialNo} onChange={e => setTireForm({...tireForm, serialNo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
@@ -4145,13 +3061,13 @@ const handleDeleteCompanyDoc = async (id) => {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400">Saklama Konumu / Depo Adı</label>
-                <input required type="text" placeholder="Örn: Araç Üzerinde Veya Lastik Oteli" value={tireForm.location} onChange={e => setTireForm({...tireForm, location: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                <label className="text-xs text-slate-400">Depo / Yer Adı</label>
+                <input required type="text" placeholder="Konum" value={tireForm.location} onChange={e => setTireForm({...tireForm, location: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400">Depo İletişim Telefonu</label>
-                <input type="text" placeholder="0212 555..." value={tireForm.phone} onChange={e => setTireForm({...tireForm, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
+                <label className="text-xs text-slate-400">Telefon</label>
+                <input type="text" placeholder="Tel" value={tireForm.phone} onChange={e => setTireForm({...tireForm, phone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-white mt-1" />
               </div>
 
               <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
