@@ -1015,18 +1015,21 @@ export default function App() {
     } catch (err) { console.error(err); }
   };
 
-  const handleDownloadVehicleReportPdf = (veh) => {
+const handleDownloadVehicleReportPdf = (veh) => {
     if (!veh) return;
+    const reportElement = document.getElementById('vehicle-report-card');
+    if (!reportElement) {
+      alert('Rapor önizleme şablonu bulunamadı.');
+      return;
+    }
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       alert('Lütfen tarayıcınızın açılır pencere (popup) engelleyicisini kapatın.');
       return;
     }
 
-    const vehicleMainTires = veh.tires && veh.tires.length > 0 ? veh.tires[0] : { type: '-', brand: '-', depth: '-' };
-    const vehMainMaint = maintenanceRecords.filter(r => r.vehicleId === veh.id);
-
-    const htmlContent = `
+    printWindow.document.write(`
       <!DOCTYPE html>
       <html lang="tr">
       <head>
@@ -1034,17 +1037,9 @@ export default function App() {
         <title>Araç Raporu - ${veh.plate}</title>
         <style>
           body { font-family: Helvetica, Arial, sans-serif; color: #1e293b; padding: 30px; margin: 0; background: #fff; }
-          .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; border-bottom: 2px solid #0f172a; padding-bottom: 15px; }
-          .logo-img { width: 70px; height: auto; object-fit: contain; }
-          .header-title { text-align: center; flex: 1; }
-          .logo-title { font-size: 18px; font-weight: bold; color: #0f172a; margin: 0; letter-spacing: 1px; }
-          .section-title { font-size: 14px; font-weight: bold; background: #1e293b; color: #fff; padding: 8px 12px; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
           th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
           th { background: #f1f5f9; color: #0f172a; font-weight: bold; }
-          .label-col { width: 40%; font-weight: bold; color: #334155; background: #f8fafc; }
-          .value-col { width: 60%; color: #0f172a; }
-          .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
           @media print {
             body { padding: 10px; }
             .no-print { display: none; }
@@ -1052,92 +1047,13 @@ export default function App() {
         </style>
       </head>
       <body>
-        <div class="header">
-          <img src="/logo.png" alt="GMG Grup Logo" class="logo-img" onerror="this.style.display='none'" />
-          <div class="header-title">
-            <div class="logo-title">GMG GRUP FİLO - ARAÇ RAPOR ÇIKTISI</div>
-            <div style="font-size: 11px; color: #64748b; margin-top: 3px;">Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}</div>
-          </div>
-        </div>
-
-        <table>
-          <tr><td class="label-col">ARAÇ PLAKASI:</td><td class="value-col"><b>${veh.plate}</b></td></tr>
-          <tr><td class="label-col">MARKA:</td><td class="value-col">${veh.brand}</td></tr>
-          <tr><td class="label-col">MODEL:</td><td class="value-col">${veh.model}</td></tr>
-          <tr><td class="label-col">MODEL YILI:</td><td class="value-col">${veh.year}</td></tr>
-          <tr><td class="label-col">MEVCUT KM:</td><td class="value-col">${veh.currentKm?.toLocaleString()} KM</td></tr>
-          <tr><td class="label-col">SONRAKİ BAKIM KM:</td><td class="value-col">${veh.nextMaintenanceKm?.toLocaleString()} KM</td></tr>
-          <tr><td class="label-col">MUAYENE BİTİŞ TARİHİ:</td><td class="value-col">${veh.inspectionDate || '-'}</td></tr>
-          <tr><td class="label-col">TRAFİK SİGORTASI BİTİŞ TARİHİ:</td><td class="value-col">${veh.insuranceDate || '-'}</td></tr>
-          <tr><td class="label-col">SİGORTA POLİÇE NO:</td><td class="value-col">${veh.insurancePolicyNo || '-'}</td></tr>
-          <tr><td class="label-col">KASKO POLİÇE BİTİŞ TARİHİ:</td><td class="value-col">${veh.cascoDate || '-'}</td></tr>
-          <tr><td class="label-col">KASKO POLİÇE NO:</td><td class="value-col">${veh.cascoPolicyNo || '-'}</td></tr>
-          <tr><td class="label-col">KİRA GELİRİ:</td><td class="value-col">${veh.financials?.monthlyIncome?.toLocaleString() || 0} TL / Ay</td></tr>
-          <tr><td class="label-col">KASKO TUTARI:</td><td class="value-col">${veh.financials?.insuranceCost?.toLocaleString() || 0} TL / Ay</td></tr>
-          <tr><td class="label-col">SİGORTA TUTARI:</td><td class="value-col">1,800 TL / Ay</td></tr>
-          <tr><td class="label-col">DİĞER AYLIK GİDERLER:</td><td class="value-col">${veh.financials?.otherExpenses?.toLocaleString() || 0} TL</td></tr>
-          <tr><td class="label-col">ZİMMETLİ SÜRÜCÜ:</td><td class="value-col">${veh.driver?.name || 'Zimmetsiz'}</td></tr>
-          <tr><td class="label-col">ZİMMETLİ SÜRÜCÜ TEL NO:</td><td class="value-col">${veh.driver?.phone || '-'}</td></tr>
-          <tr><td class="label-col">LASTİK TİPİ:</td><td class="value-col">${vehicleMainTires.type}</td></tr>
-          <tr><td class="label-col">LASTİK MARKASI VE EBATI:</td><td class="value-col">${vehicleMainTires.brand} (${vehicleMainTires.depth})</td></tr>
-        </table>
-
-        <div class="section-title">BAKIM GEÇMİŞİ</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Bakım Türü</th>
-              <th>Tarih</th>
-              <th>Bakım KM</th>
-              <th>Servis / Nokta</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${vehMainMaint.length === 0 ? '<tr><td colspan="4" style="text-align:center; color:#64748b;">Kayıtlı bakım geçmişi bulunmuyor.</td></tr>' : 
-              vehMainMaint.map(m => `
-                <tr>
-                  <td><b>${m.type}</b></td>
-                  <td>${m.date}</td>
-                  <td>${m.km?.toLocaleString()} KM</td>
-                  <td>${m.service}</td>
-                </tr>
-              `).join('')}
-          </tbody>
-        </table>
-
-        <div class="section-title">MALİYET & AÇIKLAMA DETAYLARI</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Maliyet</th>
-              <th>Açıklama / Not</th>
-              <th>İşlem Durumu</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${vehMainMaint.length === 0 ? '<tr><td colspan="3" style="text-align:center; color:#64748b;">Kayıt bulunmuyor.</td></tr>' : 
-              vehMainMaint.map(m => `
-                <tr>
-                  <td style="color: #e11d48; font-weight: bold;">${m.cost?.toLocaleString()} TL</td>
-                  <td>${m.note || '-'}</td>
-                  <td>Tamamlandı</td>
-                </tr>
-              `).join('')}
-          </tbody>
-        </table>
-
+        ${reportElement.innerHTML}
         <div style="text-align: center; margin-top: 30px;" class="no-print">
           <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 12px 24px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer;">PDF Olarak Kaydet / Yazdır</button>
         </div>
-
-        <div class="footer">
-          GMG GRUP Araç Takip & Yönetim Sistemi - Bu belge elektronik olarak oluşturulmuştur.
-        </div>
       </body>
       </html>
-    `;
-
-    printWindow.document.write(htmlContent);
+    `);
     printWindow.document.close();
   };
 
