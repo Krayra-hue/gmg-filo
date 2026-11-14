@@ -2718,14 +2718,14 @@ const handleDeleteCompanyDoc = async (id) => {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
                       <tr>
-                        <th className="p-4">Plaka</th>
-                        <th className="p-4">Bakım Türü</th>
-                        <th className="p-4">Tarih</th>
-                        <th className="p-4">Bakım KM</th>
-                        <th className="p-4">Servis / Nokta</th>
-                        <th className="p-4">Maliyet</th>
-                        <th className="p-4">Açıklama / Not</th>
-                        {hasActionPermission('delete') && <th className="p-4 text-right">İşlem</th>}
+                        <th className="p-4">Plaka / Araç</th>
+                        <th className="p-4">Durum</th>
+                        <th className="p-4">KABİS Durumu</th>
+                        <th className="p-4">KM & Bakım</th>
+                        <th className="p-4">Muayene / Sigorta</th>
+                        <th className="p-4">Sürücü (Zimmet)</th>
+                        <th className="p-4">Kiralama Bilgisi</th> {/* <-- BURAYA EKLEYEBİLİRSİNİZ */}
+                        <th className="p-4 text-right">İşlem</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60">
@@ -3347,10 +3347,18 @@ const handleDeleteCompanyDoc = async (id) => {
                               </div>
                             </td>
                             <td className="p-4">
-                              <div className="flex items-center gap-1.5 text-slate-200">
-                                <UserCheck size={14} className="text-slate-400" /> {vehicle.driver.name}
-                              </div>
-                              <div className="text-slate-500 text-xs">{vehicle.driver.phone}</div>
+                              {vehicle.status === 'Rented' && vehicle.contract ? (
+                                <div className="flex flex-col space-y-1">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                    <Building2 className="w-3 h-3 mr-1" /> {vehicle.contract.customer}
+                                  </span>
+                                  <span className="text-xs text-slate-400">
+                                    Bitiş: {vehicle.contract.endDate} | {vehicle.contract.monthlyFee}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-500 italic">Kirada Değil</span>
+                              )}
                             </td>
                             <td className="p-4 text-right">
                               <button 
