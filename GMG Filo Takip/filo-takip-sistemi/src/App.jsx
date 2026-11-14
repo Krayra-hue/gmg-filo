@@ -3297,7 +3297,7 @@ const handleDeleteCompanyDoc = async (id) => {
                         <th className="p-4">KABİS Durumu</th>
                         <th className="p-4">KM & Bakım</th>
                         <th className="p-4">Muayene / Sigorta</th>
-                        <th className="p-4">Sürücü (Zimmet)</th>
+                        <th className="p-4">Kiralama Bilgisi</th>
                         <th className="p-4 text-right">İşlem</th>
                       </tr>
                     </thead>
