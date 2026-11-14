@@ -89,6 +89,7 @@ const initialCompanyDocs = [
 
 const AVAILABLE_PERMISSIONS = [
   { id: 'vehicles', label: 'Tüm Araç Paneli' },
+  { id: 'rentals', label: 'Kiraları Yönet' },
   { id: 'reports', label: 'Araç Rapor Çıktısı (PDF)' },
   { id: 'notifications', label: 'Bildirimler & Uyarılar' },
   { id: 'maintenance', label: 'Bakım Geçmişi & Servis' },
@@ -167,6 +168,18 @@ const handleSaveNewUser = async (e) => {
     actions: { create: true, edit: true, delete: false }
   });
 
+  const [rentalsList, setRentalsList] = useState([]); // <--- EKLEYİN
+  const [showManageRentModal, setShowManageRentModal] = useState(false); // <--- EKLEYİN
+  const [selectedRentalForEdit, setSelectedRentalForEdit] = useState(null); // <--- EKLEYİN
+  const [manageRentForm, setManageRentForm] = useState({ // <--- EKLEYİN
+    customerName: '',
+    taxNumber: '',
+    monthlyFee: '',
+    endDate: '',
+    kmLimit: '',
+    contractFileUrl: '#'
+  });
+  
   const [vehicles, setVehicles] = useState([]);
   const [standaloneDrivers, setStandaloneDrivers] = useState([]);
 
@@ -258,6 +271,12 @@ const handleSaveNewUser = async (e) => {
     if (!currentUser) return;
     const token = localStorage.getItem('gmg_token');
     const headers = { 'Authorization': `Bearer ${token}` };
+   
+    // Kiralamaları Çek
+    fetch(`${API_BASE_URL}/api/rentals`, { headers })
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setRentalsList(data); })
+      .catch(err => console.error('Kiralamalar yüklenemedi:', err));
 
     // Araçları Çek
     fetch(`${API_BASE_URL}/api/vehicles`, { headers })
@@ -2181,7 +2200,17 @@ const handleDeleteCompanyDoc = async (id) => {
                 <FileDown size={18} className="text-cyan-400 shrink-0" /> <span className="text-xs truncate">Araç Rapor Çıktısı</span>
               </button>
             )}
-
+           
+            {hasPermission('rentals') && (
+              <button 
+                onClick={() => setActiveTab('rentals_management')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition cursor-pointer mt-1 ${
+                  activeTab === 'rentals_management' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                <Key size={18} className="text-emerald-400 shrink-0" /> <span className="text-xs truncate">Kiraları Yönet</span>
+              </button>
+            )}
             {hasPermission('notifications') && (
               <button 
                 onClick={() => setActiveTab('notifications')}
@@ -3144,6 +3173,68 @@ const handleDeleteCompanyDoc = async (id) => {
               </div>
             )}
 
+            {activeTab === 'rentals_management' && hasPermission('rentals') && (
+              <div className="space-y-6">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
+                      <Key className="text-emerald-400" /> Kurumsal Kiralama & Sözleşme Yönetim Merkezi
+                    </h3>
+                    <p className="text-slate-400 text-xs">Kiralanan araçların sözleşme sürelerini uzatabilir, vergi numarası ve aylık KM sınırlarını güncelleyebilir, PDF sözleşme yükleyebilirsiniz.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {vehicles.filter(v => v.status === 'Rented').map(v => {
+                    const rentalInfo = rentalsList.find(r => r.vehicleId === v.id) || {
+                      customerName: v.contract?.customer || 'Belirtilmedi',
+                      taxNumber: v.kabisIdentityNo || '-',
+                      monthlyFee: v.contract?.monthlyFee || '0',
+                      endDate: v.contract?.endDate || '-',
+                      kmLimit: v.kmLimit || '15000',
+                      contractFileUrl: '#'
+                    };
+
+                    return (
+                      <div key={v.id} className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
+                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                          <div>
+                            <h4 className="font-bold text-white text-base font-mono">{v.plate}</h4>
+                            <p className="text-xs text-slate-400">{v.brand} {v.model}</p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              setSelectedRentalForEdit({ vehicleId: v.id, rentalId: rentalInfo.id });
+                              setManageRentForm({
+                                customerName: rentalInfo.customerName,
+                                taxNumber: rentalInfo.taxNumber,
+                                monthlyFee: String(rentalInfo.monthlyFee).replace(/[^0-9]/g, ''),
+                                endDate: rentalInfo.endDate,
+                                kmLimit: rentalInfo.kmLimit || '',
+                                contractFileUrl: rentalInfo.contractFileUrl || '#'
+                              });
+                              setShowManageRentModal(true);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 font-semibold cursor-pointer shadow-lg shadow-blue-600/20"
+                          >
+                            <Edit3 size={14} /> Sözleşmeyi & KM Sınırını Yönet
+                          </button>
+                        </div>
+
+                        <div className="space-y-2 text-xs bg-slate-950 p-4 rounded-lg border border-slate-800">
+                          <div className="flex justify-between"><span className="text-slate-400">Kiracı / Şirket:</span> <span className="text-white font-bold">{rentalInfo.customerName}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Vergi Numarası:</span> <span className="text-cyan-300 font-mono">{rentalInfo.taxNumber}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Aylık Tutar:</span> <span className="text-emerald-400 font-bold">{rentalInfo.monthlyFee}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Sözleşme Bitiş:</span> <span className="text-amber-400 font-semibold">{rentalInfo.endDate}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Tahsis / KM Sınırı:</span> <span className="text-purple-300 font-medium">{rentalInfo.kmLimit} KM / Ay</span></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
             {activeTab === 'company_docs' && hasPermission('company_docs') && (
               <div className="space-y-6">
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
@@ -3514,6 +3605,113 @@ const handleDeleteCompanyDoc = async (id) => {
         </div>
       )}
 
+{activeTab === 'company_docs' && hasPermission('company_docs') && (
+              <div className="space-y-6">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
+                      <Building2 className="text-indigo-400" /> Şirket & Kurumsal Sözleşmeler Kütüphanesi
+                    </h3>
+                    <p className="text-slate-400 text-xs">Şirketler arası uzun vadeli tedarik, filo kiralama sözleşmeleri ve kurumsal evraklar.</p>
+                  </div>
+                  {hasActionPermission('create') && (
+                    <button 
+                      onClick={() => setShowCompanyDocModal(true)}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 font-semibold transition shadow-lg shadow-indigo-600/25 cursor-pointer shrink-0"
+                    >
+                      <Plus size={16} /> Yeni Şirket Evrakı Ekle
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {companyDocs.map(doc => (
+                    <div key={doc.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <Building2 className="text-indigo-400" size={24} />
+                        <div>
+                          <h4 className="font-bold text-white text-sm">{doc.name}</h4>
+                          <p className="text-xs text-slate-400">{doc.category} • Firma: {doc.company}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Bitiş Tarihi: {doc.expiry}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a href={doc.fileUrl || '#'} download={doc.name} className="bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/40 border border-indigo-500/30 px-3 py-1.5 rounded text-xs font-semibold">İndir</a>
+                        {hasActionPermission('delete') && (
+                          <button onClick={() => handleDeleteCompanyDoc(doc.id)} className="bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 p-1.5 rounded cursor-pointer" title="Evrakı Sil">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ---> 5. ADIM BURAYA, ŞİRKET EVRAKLARI BLOKUNUN HEMEN ALTINA GELECEK <--- */}
+            {activeTab === 'rentals_management' && hasPermission('rentals') && (
+              <div className="space-y-6">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
+                      <Key className="text-emerald-400" /> Kurumsal Kiralama & Sözleşme Yönetim Merkezi
+                    </h3>
+                    <p className="text-slate-400 text-xs">Kiralanan araçların sözleşme sürelerini uzatabilir, vergi numarası ve aylık KM sınırlarını güncelleyebilir, PDF sözleşme yükleyebilirsiniz.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {vehicles.filter(v => v.status === 'Rented').map(v => {
+                    const rentalInfo = rentalsList.find(r => r.vehicleId === v.id) || {
+                      customerName: v.contract?.customer || 'Belirtilmedi',
+                      taxNumber: v.kabisIdentityNo || '-',
+                      monthlyFee: v.contract?.monthlyFee || '0',
+                      endDate: v.contract?.endDate || '-',
+                      kmLimit: v.kmLimit || '15000',
+                      contractFileUrl: '#'
+                    };
+
+                    return (
+                      <div key={v.id} className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
+                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                          <div>
+                            <h4 className="font-bold text-white text-base font-mono">{v.plate}</h4>
+                            <p className="text-xs text-slate-400">{v.brand} {v.model}</p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              setSelectedRentalForEdit({ vehicleId: v.id, rentalId: rentalInfo.id });
+                              setManageRentForm({
+                                customerName: rentalInfo.customerName,
+                                taxNumber: rentalInfo.taxNumber,
+                                monthlyFee: String(rentalInfo.monthlyFee).replace(/[^0-9]/g, ''),
+                                endDate: rentalInfo.endDate,
+                                kmLimit: rentalInfo.kmLimit || '',
+                                contractFileUrl: rentalInfo.contractFileUrl || '#'
+                              });
+                              setShowManageRentModal(true);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3.5 py-2 rounded-lg flex items-center gap-1.5 font-semibold cursor-pointer shadow-lg shadow-blue-600/20"
+                          >
+                            <Edit3 size={14} /> Sözleşmeyi & KM Sınırını Yönet
+                          </button>
+                        </div>
+
+                        <div className="space-y-2 text-xs bg-slate-950 p-4 rounded-lg border border-slate-800">
+                          <div className="flex justify-between"><span className="text-slate-400">Kiracı / Şirket:</span> <span className="text-white font-bold">{rentalInfo.customerName}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Vergi Numarası:</span> <span className="text-cyan-300 font-mono">{rentalInfo.taxNumber}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Aylık Tutar:</span> <span className="text-emerald-400 font-bold">{rentalInfo.monthlyFee}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Sözleşme Bitiş:</span> <span className="text-amber-400 font-semibold">{rentalInfo.endDate}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Tahsis / KM Sınırı:</span> <span className="text-purple-300 font-medium">{rentalInfo.kmLimit} KM / Ay</span></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+      
       {showAddMaintenanceModal && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6">
