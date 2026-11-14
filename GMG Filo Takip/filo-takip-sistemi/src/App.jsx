@@ -89,7 +89,7 @@ const initialCompanyDocs = [
 
 const AVAILABLE_PERMISSIONS = [
   { id: 'vehicles', label: 'Tüm Araç Paneli' },
-  { id: 'rentals', label: 'Kiraları Yönet' },
+  { id: 's', label: 'Kiraları Yönet' },
   { id: 'reports', label: 'Araç Rapor Çıktısı (PDF)' },
   { id: 'notifications', label: 'Bildirimler & Uyarılar' },
   { id: 'maintenance', label: 'Bakım Geçmişi & Servis' },
@@ -168,7 +168,7 @@ const handleSaveNewUser = async (e) => {
     actions: { create: true, edit: true, delete: false }
   });
 
-  const [rentalsList, setRentalsList] = useState([]); // <--- EKLEYİN
+  const [sList, setRentalsList] = useState([]); // <--- EKLEYİN
   const [showManageRentModal, setShowManageRentModal] = useState(false); // <--- EKLEYİN
   const [selectedRentalForEdit, setSelectedRentalForEdit] = useState(null); // <--- EKLEYİN
   const [manageRentForm, setManageRentForm] = useState({ // <--- EKLEYİN
@@ -3590,8 +3590,8 @@ const handleDeleteCompanyDoc = async (id) => {
             )}
 
             {/* ---> 5. ADIM BURAYA, ŞİRKET EVRAKLARI BLOKUNUN HEMEN ALTINA GELECEK <--- */}
-            {activeTab === 'rentals_management' && hasPermission('rentals') && (
-              <div className="space-y-6">
+          {activeTab === 'rentals_management' && hasPermission('rentals') && (
+              <div className="w-full space-y-6">
                 <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
@@ -3601,7 +3601,7 @@ const handleDeleteCompanyDoc = async (id) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                   {vehicles.filter(v => v.status === 'Rented').map(v => {
                     const rentalInfo = rentalsList.find(r => r.vehicleId === v.id) || {
                       customerName: v.contract?.customer || 'Belirtilmedi',
