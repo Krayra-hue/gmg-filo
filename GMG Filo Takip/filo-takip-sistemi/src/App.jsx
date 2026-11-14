@@ -3590,7 +3590,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {/* ---> 5. ADIM BURAYA, ŞİRKET EVRAKLARI BLOKUNUN HEMEN ALTINA GELECEK <--- */}
 {activeTab === 'rentals_management' && hasPermission('rentals') && (
-  <div className="w-full space-y-6">
+  <div className="p-6 space-y-6">
     <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex justify-between items-center">
       <div>
         <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
