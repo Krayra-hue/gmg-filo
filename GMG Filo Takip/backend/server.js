@@ -121,6 +121,20 @@ function initDatabase() {
       expiry TEXT,
       fileUrl TEXT
     )`);
+    // 6. Kiralamalar Tablosu
+    db.run(`CREATE TABLE IF NOT EXISTS rentals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicleId INTEGER,
+      plate TEXT,
+      customerName TEXT,
+      taxNumber TEXT,
+      monthlyFee REAL,
+      startDate TEXT,
+      endDate TEXT,
+      startKm INTEGER,
+      kmLimit INTEGER,
+      contractFileUrl TEXT
+    )`);
   });
 }
 
@@ -467,6 +481,44 @@ app.delete('/api/company-docs/:id', authenticateToken, (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ message: 'Şirket evrakı ve dosyası başarıyla silindi' });
     });
+  });
+});
+// 7. KİRALAMALAR (RENTALS) ENDPOINT'LERİ
+app.get('/api/rentals', authenticateToken, (req, res) => {
+  db.all(`SELECT * FROM rentals`, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/rentals', authenticateToken, (req, res) => {
+  const r = req.body;
+  db.run(`INSERT INTO rentals (vehicleId, plate, customerName, taxNumber, monthlyFee, startDate, endDate, startKm, kmLimit, contractFileUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [r.vehicleId, r.plate, r.customerName, r.taxNumber, r.monthlyFee, r.startDate, r.endDate, r.startKm, r.kmLimit, r.contractFileUrl || '#'],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.status(201).json({ message: 'Kiralama başarıyla eklendi', rental: { id: this.lastID, ...r } });
+    }
+  );
+});
+
+app.put('/api/rentals/:id', authenticateToken, (req, res) => {
+  const id = req.params.id;
+  const r = req.body;
+  db.run(`UPDATE rentals SET customerName = ?, taxNumber = ?, monthlyFee = ?, endDate = ?, kmLimit = ?, contractFileUrl = ? WHERE id = ?`,
+    [r.customerName, r.taxNumber, r.monthlyFee, r.endDate, r.kmLimit, r.contractFileUrl, id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Kiralama sözleşmesi güncellendi' });
+    }
+  );
+});
+
+app.delete('/api/rentals/:id', authenticateToken, (req, res) => {
+  const id = req.params.id;
+  db.run(`DELETE FROM rentals WHERE id = ?`, [id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Kiralama kaydı silindi' });
   });
 });
 
