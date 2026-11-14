@@ -3590,9 +3590,9 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {/* ---> 5. ADIM BURAYA, ŞİRKET EVRAKLARI BLOKUNUN HEMEN ALTINA GELECEK <--- */}
 {activeTab === 'rentals_management' && hasPermission('rentals') && (
-  <div className="space-y-6">
-    {/* Üst Başlık ve Arama Alanı (Diğer sekmelerle birebir aynı hizada) */}
-    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+  <div className="w-full col-span-full space-y-6">
+    {/* Üst Başlık */}
+    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
       <div>
         <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
           <Key className="text-emerald-400" /> Kurumsal Kiralama & Sözleşme Yönetim Merkezi
@@ -3610,7 +3610,7 @@ const handleDeleteCompanyDoc = async (id) => {
       </div>
     </div>
 
-    {/* Araç Kartları Grid Yapısı (Tam Genişlik) */}
+    {/* Araç Kartları Grid Yapısı */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
       {vehicles
         .filter(v => v.status === 'Rented' && (v.plate.toLowerCase().includes(searchQuery.toLowerCase()) || v.brand.toLowerCase().includes(searchQuery.toLowerCase())))
