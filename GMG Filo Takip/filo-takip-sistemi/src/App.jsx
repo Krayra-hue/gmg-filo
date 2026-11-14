@@ -179,7 +179,17 @@ const handleSaveNewUser = async (e) => {
     kmLimit: '',
     contractFileUrl: '#'
   });
-  
+  const [rentalsList, setRentalsList] = useState([]);
+  const [showManageRentModal, setShowManageRentModal] = useState(false);
+  const [selectedRentalForEdit, setSelectedRentalForEdit] = useState(null);
+  const [manageRentForm, setManageRentForm] = useState({
+    customerName: '',
+    taxNumber: '',
+    monthlyFee: '',
+    endDate: '',
+    kmLimit: '',
+    contractFileUrl: '#'
+  });
   const [vehicles, setVehicles] = useState([]);
   const [standaloneDrivers, setStandaloneDrivers] = useState([]);
 
