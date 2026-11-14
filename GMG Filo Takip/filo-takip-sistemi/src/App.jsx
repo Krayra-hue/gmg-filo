@@ -168,17 +168,6 @@ const handleSaveNewUser = async (e) => {
     actions: { create: true, edit: true, delete: false }
   });
 
-  const [sList, setRentalsList] = useState([]); // <--- EKLEYİN
-  const [showManageRentModal, setShowManageRentModal] = useState(false); // <--- EKLEYİN
-  const [selectedRentalForEdit, setSelectedRentalForEdit] = useState(null); // <--- EKLEYİN
-  const [manageRentForm, setManageRentForm] = useState({ // <--- EKLEYİN
-    customerName: '',
-    taxNumber: '',
-    monthlyFee: '',
-    endDate: '',
-    kmLimit: '',
-    contractFileUrl: '#'
-  });
   const [rentalsList, setRentalsList] = useState([]);
   const [showManageRentModal, setShowManageRentModal] = useState(false);
   const [selectedRentalForEdit, setSelectedRentalForEdit] = useState(null);
