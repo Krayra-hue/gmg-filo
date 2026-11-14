@@ -3590,26 +3590,17 @@ const handleDeleteCompanyDoc = async (id) => {
 
             {/* ---> 5. ADIM BURAYA, ŞİRKET EVRAKLARI BLOKUNUN HEMEN ALTINA GELECEK <--- */}
 {activeTab === 'rentals_management' && hasPermission('rentals') && (
-  <div className="space-y-6">
-    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div>
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
-          <Key className="text-emerald-400" /> Kurumsal Kiralama & Sözleşme Yönetim Merkezi
-        </h3>
-        <p className="text-slate-400 text-xs">Kiralanan araçların sözleşme sürelerini uzatabilir, vergi numarası ve aylık KM sınırlarını güncelleyebilir, PDF sözleşme yükleyebilirsiniz.</p>
-      </div>
-      <div className="w-full md:w-auto">
-        <input 
-          type="text" 
-          placeholder="Plaka veya Marka Ara..." 
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white w-full md:w-64 focus:outline-none focus:border-blue-600"
-        />
-      </div>
+  <div className="space-y-6 w-full">
+    {/* Kurumsal Kiralama Bilgi Paneli (Üstteki ana başlığın hemen altında alt alta duracak) */}
+    <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl w-full">
+      <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-1">
+        <Key className="text-emerald-400" /> Kurumsal Kiralama & Sözleşme Yönetim Merkezi
+      </h3>
+      <p className="text-slate-400 text-xs">Kiralanan araçların sözleşme sürelerini uzatabilir, vergi numarası ve aylık KM sınırlarını güncelleyebilir, PDF sözleşme yükleyebilirsiniz.</p>
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* Araç Kartları Grid Yapısı (Tam Genişlikte Alt Alta) */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
       {vehicles
         .filter(v => v.status === 'Rented' && (v.plate.toLowerCase().includes(searchQuery.toLowerCase()) || v.brand.toLowerCase().includes(searchQuery.toLowerCase())))
         .map(v => {
@@ -3623,7 +3614,7 @@ const handleDeleteCompanyDoc = async (id) => {
           };
 
           return (
-            <div key={v.id} className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
+            <div key={v.id} className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4 shadow-lg">
               <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                 <div>
                   <h4 className="font-bold text-white text-base font-mono">{v.plate}</h4>
@@ -3650,7 +3641,7 @@ const handleDeleteCompanyDoc = async (id) => {
 
               <div className="space-y-2 text-xs bg-slate-950 p-4 rounded-lg border border-slate-800">
                 <div className="flex justify-between"><span className="text-slate-400">Kiracı / Şirket:</span> <span className="text-white font-bold">{rentalInfo.customerName}</span></div>
-                <div className="flex justify-between"><span className="text-slate-400">Vergi Numarası:</span> <span className="cyan-300 font-mono">{rentalInfo.taxNumber}</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Vergi Numarası:</span> <span className="text-cyan-300 font-mono">{rentalInfo.taxNumber}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Aylık Tutar:</span> <span className="text-emerald-400 font-bold">{rentalInfo.monthlyFee}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Sözleşme Bitiş:</span> <span className="text-amber-400 font-semibold">{rentalInfo.endDate}</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Tahsis / KM Sınırı:</span> <span className="text-purple-300 font-medium">{rentalInfo.kmLimit} KM / Ay</span></div>
